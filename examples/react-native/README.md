@@ -56,11 +56,14 @@ runtime location permission before they deliver BLE scan results, even when
 If scanning starts but finds no devices, confirm that location permission is
 granted for the app and that device Location services are enabled.
 
+Only one app can own the glasses BLE connection at a time. This example releases the SDK connection when it leaves the foreground, but if scan still finds no devices, close or force-stop MentraOS, the native Android example, or any other app that may be connected to the glasses. The app also shows Android-level known Mentra devices and can connect directly by address when Android already knows a bonded device.
+
 ## What It Demonstrates
 
 - Subscribing to glasses and Bluetooth status
 - Scanning for compatible glasses
 - Connecting to discovered or saved/default glasses
+- Showing Android-level known devices and direct-connect by address diagnostics
 - Connecting to simulated glasses
 - Displaying text
 - Applying display settings

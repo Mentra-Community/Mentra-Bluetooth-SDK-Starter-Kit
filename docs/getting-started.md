@@ -78,11 +78,20 @@ class GlassesController(
     )
 
     fun scan() {
+        val knownDevices = sdk.getKnownDevices(MentraDeviceModel.MENTRA_LIVE)
+        if (knownDevices.any { it.connected }) {
+            // Another app or previous SDK process may already own the BLE link.
+            // Ask the user to close the other app before scanning here.
+        }
         sdk.startScan(MentraDeviceModel.MENTRA_LIVE)
     }
 
     fun connect(device: MentraDiscoveredDevice) {
         sdk.connect(device)
+    }
+
+    fun connectKnownDevice(device: MentraKnownDevice) {
+        sdk.connectByAddress(device.model, device.address, device.name)
     }
 
     fun showHello() {

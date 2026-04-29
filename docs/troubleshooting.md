@@ -42,6 +42,8 @@ If your app also uses Firebase with static frameworks, Firebase modular header c
 - Confirm OS Bluetooth permissions are granted.
 - On Android, confirm location permission is granted and device Location services are enabled.
 - Confirm the selected `MentraDeviceModel` matches the target glasses family.
+- On Android, call `getKnownDevices(MentraDeviceModel.MENTRA_LIVE)`. If it reports a matching device as connected but scan returns no SDK result, another app or previous SDK process may already own the glasses BLE connection. Close or force-stop other apps using the glasses, then scan again.
+- On Android, if a known device is bonded but not advertising a usable name, connect with `connectByAddress(...)` using an address returned by `getKnownDevices(...)`.
 - Stop and restart scanning from the UI instead of scanning indefinitely.
 - Try pairing from a clean Bluetooth state after forgetting the device.
 

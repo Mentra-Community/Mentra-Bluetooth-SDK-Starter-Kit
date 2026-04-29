@@ -35,6 +35,7 @@ import com.mentra.bluetoothsdk.MentraDisplayTextRequest
 import com.mentra.bluetoothsdk.MentraGalleryMode
 import com.mentra.bluetoothsdk.MentraGalleryStatusEvent
 import com.mentra.bluetoothsdk.MentraGlassesStatusUpdate
+import com.mentra.bluetoothsdk.MentraKnownDevice
 import com.mentra.bluetoothsdk.MentraLocalTranscriptionEvent
 import com.mentra.bluetoothsdk.MentraMicConfig
 import com.mentra.bluetoothsdk.MentraMicPreference
@@ -66,6 +67,7 @@ class MainActivity : Activity(), MentraBluetoothSdkListener {
     private lateinit var tabViews: Map<DemoTab, ScrollView>
     private lateinit var connectionText: TextView
     private lateinit var deviceText: TextView
+    private lateinit var knownDevicesText: TextView
     private lateinit var batteryText: TextView
     private lateinit var wifiText: TextView
     private lateinit var versionText: TextView
@@ -82,6 +84,7 @@ class MainActivity : Activity(), MentraBluetoothSdkListener {
     private val bluetoothValues = linkedMapOf<String, Any>()
     private val versionValues = linkedMapOf<String, Any>()
     private var latestDevice: MentraDiscoveredDevice? = null
+    private var latestKnownDevices: List<MentraKnownDevice> = emptyList()
     private var latestBatteryLine = "Battery: waiting for device status"
     private var latestWifiLine = "Wi-Fi: waiting for device status"
     private var latestEventLine = "Events: waiting for hardware events"
@@ -111,9 +114,19 @@ class MainActivity : Activity(), MentraBluetoothSdkListener {
         super.onDestroy()
     }
 
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) {
+            dataChannelActive = false
+            sdk.disconnect()
+            appendAppLog("Released the glasses connection because the sample app left the foreground.")
+        }
+    }
+
     private fun createContentView(): LinearLayout {
         connectionText = statusLine("Connection: not connected")
         deviceText = statusLine("Device: none")
+        knownDevicesText = statusLine("Known devices: not checked")
         batteryText = statusLine(latestBatteryLine)
         wifiText = statusLine(latestWifiLine)
         versionText = statusLine("Version: waiting for device status")
@@ -193,14 +206,21 @@ class MainActivity : Activity(), MentraBluetoothSdkListener {
         content.addView(sectionTitle("Mentra Live status"))
         content.addView(connectionText)
         content.addView(deviceText)
+        content.addView(knownDevicesText)
         content.addView(batteryText)
         content.addView(wifiText)
         content.addView(versionText)
         content.addView(eventText)
 
         content.addView(sectionTitle("Connection"))
+        content.addView(
+            statusLine(
+                "Only one app can own the glasses BLE connection at a time. If another Mentra sample is connected, close it or force-stop it before scanning here."
+            )
+        )
         content.addView(button("Scan for Mentra Live") {
             latestDevice = null
+            refreshKnownDevices()
             sdk.startScan(MentraDeviceModel.MENTRA_LIVE)
             appendAppLog("Scanning for Mentra Live glasses...")
         })
@@ -209,6 +229,25 @@ class MainActivity : Activity(), MentraBluetoothSdkListener {
             if (device != null) {
                 sdk.connect(device)
                 appendAppLog("Connecting to ${device.name}...")
+                return@button
+            }
+
+            val connectedKnownDevice = refreshKnownDevices().firstOrNull { it.connected }
+            if (connectedKnownDevice != null && glassesValues["connected"] != true) {
+                latestEventLine = "Events: ${connectedKnownDevice.name} connected elsewhere"
+                updateStatusPanel()
+                appendAppLog(
+                    "${connectedKnownDevice.name} already appears connected at the Android Bluetooth layer. Close or force-stop the other app using the glasses, then scan again."
+                )
+                return@button
+            }
+
+            val knownDevice = latestKnownDevices.firstOrNull()
+            if (knownDevice != null) {
+                sdk.connectByAddress(knownDevice.model, knownDevice.address, knownDevice.name)
+                appendAppLog(
+                    "Connecting directly to known ${knownDevice.name} (${knownDevice.address}). If this hangs, another app may still own the BLE connection."
+                )
             } else {
                 sdk.connectDefault()
                 appendAppLog("No scan result yet. Trying saved default device...")
@@ -432,7 +471,22 @@ class MainActivity : Activity(), MentraBluetoothSdkListener {
     private fun refreshSnapshot() {
         glassesValues.putAll(sdk.getGlassesStatus().values)
         bluetoothValues.putAll(sdk.getBluetoothStatus().values)
+        refreshKnownDevices()
         updateStatusPanel()
+    }
+
+    private fun refreshKnownDevices(): List<MentraKnownDevice> {
+        latestKnownDevices = sdk.getKnownDevices(MentraDeviceModel.MENTRA_LIVE)
+        runOnUiThread {
+            knownDevicesText.text = "Known devices: ${formatKnownDevices(latestKnownDevices)}"
+        }
+        val connected = latestKnownDevices.filter { it.connected }
+        if (connected.isNotEmpty()) {
+            appendAppLog(
+                "Android already sees ${connected.joinToString { it.name }} connected. If this sample did not connect it, close or force-stop the other app using the glasses."
+            )
+        }
+        return latestKnownDevices
     }
 
     private fun startMicCapture(sendPcm: Boolean, sendLc3: Boolean, sendTranscript: Boolean) {
@@ -819,6 +873,9 @@ class MainActivity : Activity(), MentraBluetoothSdkListener {
 
     override fun onError(error: MentraBluetoothError) {
         latestEventLine = "Events: error ${error.code}"
+        if (error.code == "device_connected_elsewhere") {
+            refreshKnownDevices()
+        }
         updateStatusPanel()
         appendAppLog("Error ${error.code}: ${error.message}")
     }
@@ -890,6 +947,7 @@ class MainActivity : Activity(), MentraBluetoothSdkListener {
             connectionText.text =
                 "Connection: sdkConnected=$connected dataChannel=${if (dataChannelActive) "active" else "idle"} scanning=$searching pending=$pending"
             deviceText.text = "Device: $deviceName model=$model"
+            knownDevicesText.text = "Known devices: ${formatKnownDevices(latestKnownDevices)}"
             batteryText.text = latestBatteryLine
             wifiText.text = latestWifiLine
             versionText.text = "Version: ${summarizeVersion()}"
@@ -907,6 +965,14 @@ class MainActivity : Activity(), MentraBluetoothSdkListener {
     private fun formatBatteryLine(level: Int?, charging: Boolean?): String {
         val levelText = level?.takeIf { it >= 0 }?.let { "$it%" } ?: "unknown"
         return "Battery: $levelText charging=${charging ?: "unknown"}"
+    }
+
+    private fun formatKnownDevices(devices: List<MentraKnownDevice>): String {
+        if (devices.isEmpty()) return "none visible to Android"
+        return devices.joinToString { device ->
+            val state = if (device.connected) "connected" else if (device.bonded) "bonded" else "known"
+            "${device.name} $state"
+        }
     }
 
     private fun summarizeVersion(): String {

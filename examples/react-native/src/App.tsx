@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
+  type AppStateStatus,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -15,11 +17,13 @@ import {
 } from "react-native";
 import BluetoothSdk, {
   type BatteryStatusEvent,
+  type BluetoothErrorEvent,
   type BluetoothStatus,
   type ButtonPressEvent,
   type CompatibleGlassesSearchStopEvent,
   type DeviceSearchResult,
   type GlassesStatus,
+  type KnownDevice,
   type LogEvent,
   type PhotoResponseEvent,
 } from "@mentra/bluetooth-sdk";
@@ -44,6 +48,7 @@ export default function App() {
   const [bluetoothStatus, setBluetoothStatus] = useState<
     Partial<BluetoothStatus>
   >({});
+  const [knownDevices, setKnownDevices] = useState<KnownDevice[]>([]);
   const [events, setEvents] = useState<string[]>([]);
   const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
   const [cameraStatus, setCameraStatus] = useState(
@@ -98,9 +103,24 @@ export default function App() {
       },
     );
 
+    const bluetoothErrorSub = BluetoothSdk.addListener(
+      "bluetooth_error",
+      (event: BluetoothErrorEvent) => {
+        addEvent(`${event.code}: ${event.message}`);
+        if (event.code === "device_connected_elsewhere") {
+          void refreshKnownDevices("diagnostic");
+        }
+      },
+    );
+
     const logSub = BluetoothSdk.addListener("log", (event: LogEvent) => {
       addEvent(event.message);
     });
+
+    const appStateSub = AppState.addEventListener(
+      "change",
+      handleAppStateChange,
+    );
 
     if (DEFAULT_WEBHOOK_URL) {
       addEvent("Loaded webhook URL from EXPO_PUBLIC_MENTRA_PHOTO_WEBHOOK_URL.");
@@ -117,9 +137,12 @@ export default function App() {
       batterySub.remove();
       photoSub.remove();
       scanStopSub.remove();
+      bluetoothErrorSub.remove();
       logSub.remove();
+      appStateSub.remove();
       activePhotoRequestIdRef.current = null;
       pollGenerationRef.current += 1;
+      void BluetoothSdk.disconnect().catch(() => undefined);
     };
   }, []);
 
@@ -168,11 +191,47 @@ export default function App() {
     return true;
   }
 
+  function handleAppStateChange(nextState: AppStateStatus) {
+    if (nextState === "active") {
+      return;
+    }
+
+    addEvent("Example app left the foreground; releasing the glasses connection.");
+    void BluetoothSdk.disconnect().catch((error) => {
+      addEvent(`Background disconnect failed: ${formatError(error)}`);
+    });
+  }
+
+  async function refreshKnownDevices(reason: string) {
+    if (Platform.OS !== "android") {
+      return [];
+    }
+
+    if (!(await ensureAndroidPermissions(`known devices (${reason})`))) {
+      return [];
+    }
+
+    const devices = BluetoothSdk.getKnownDevices("Mentra Live");
+    setKnownDevices(devices);
+
+    const connected = devices.filter((device) => device.connected);
+    if (connected.length > 0) {
+      addEvent(
+        `Android already sees ${connected
+          .map((device) => device.deviceName)
+          .join(", ")} connected. Close any other app using the glasses before scanning here.`,
+      );
+    }
+
+    return devices;
+  }
+
   async function scanForMentraLive() {
     if (!(await ensureAndroidPermissions("scan"))) {
       throw new Error("Bluetooth permissions are required to scan.");
     }
 
+    await refreshKnownDevices("scan");
     await BluetoothSdk.findCompatibleDevices("Mentra Live");
   }
 
@@ -201,6 +260,23 @@ export default function App() {
       return;
     }
 
+    let knownDevice = knownDevices[0];
+    let connectedKnownDevice = knownDevices.find((device) => device.connected);
+    if (!knownDevice && !connectedKnownDevice) {
+      const refreshedDevices = await refreshKnownDevices("connect");
+      connectedKnownDevice = refreshedDevices.find((device) => device.connected);
+      knownDevice = refreshedDevices[0];
+    }
+    if (connectedKnownDevice && glassesStatus.connected !== true) {
+      throw new Error(
+        `${connectedKnownDevice.deviceName} already appears connected at the Android Bluetooth layer. Close or force-stop the other app using the glasses, then scan again.`,
+      );
+    }
+    if (knownDevice) {
+      await connectKnownDevice(knownDevice);
+      return;
+    }
+
     const currentBluetoothStatus = BluetoothSdk.getBluetoothStatus() as Partial<
       BluetoothStatus
     > &
@@ -225,6 +301,27 @@ export default function App() {
 
     addEvent(`Connecting to ${device.deviceName}...`);
     await BluetoothSdk.connectDiscoveredDevice(device);
+  }
+
+  async function connectKnownDevice(device: KnownDevice) {
+    if (!(await ensureAndroidPermissions("connect known device"))) {
+      throw new Error("Bluetooth permissions are required to connect.");
+    }
+
+    if (device.connected && glassesStatus.connected !== true) {
+      throw new Error(
+        `${device.deviceName} already appears connected at the Android Bluetooth layer. Close or force-stop the other app using the glasses, then scan again.`,
+      );
+    }
+
+    addEvent(
+      `Connecting directly to known ${device.deviceName} (${device.deviceAddress}).`,
+    );
+    await BluetoothSdk.connectDeviceByAddress(
+      device.deviceModel,
+      device.deviceAddress,
+      device.deviceName,
+    );
   }
 
   async function requestWebhookPhoto() {
@@ -385,6 +482,7 @@ export default function App() {
               label="Discovered"
               value={formatDiscoveredDevices(discoveredDevices)}
             />
+            <StatusRow label="Known" value={formatKnownDevices(knownDevices)} />
             <StatusRow label="Permissions" value={permissionStatus} />
             <StatusRow label="Camera" value={cameraStatus} />
             <StatusRow label="Latest event" value={events[0] ?? "No events yet."} />
@@ -426,6 +524,23 @@ export default function App() {
                 Scan first. Discovered glasses will appear here as buttons.
               </Text>
             )}
+            {knownDevices.length > 0 ? (
+              <View style={styles.deviceList}>
+                <Text style={styles.deviceListTitle}>Known Android devices</Text>
+                {knownDevices.map((device) => (
+                  <ActionButton
+                    active={activeAction === `Connect known ${device.deviceName}`}
+                    key={`${device.deviceModel}-${device.deviceAddress}`}
+                    title={`Connect known ${device.deviceName}`}
+                    onPress={() =>
+                      void runAction(`Connect known ${device.deviceName}`, () =>
+                        connectKnownDevice(device),
+                      )
+                    }
+                  />
+                ))}
+              </View>
+            ) : null}
             <ActionButton
               active={activeAction === "Request status"}
               title="Request status"
@@ -769,6 +884,23 @@ function formatDiscoveredDevices(devices: DeviceSearchResult[]) {
   }
 
   return devices.map((device) => device.deviceName).join(", ");
+}
+
+function formatKnownDevices(devices: KnownDevice[]) {
+  if (devices.length === 0) {
+    return "None visible to Android";
+  }
+
+  return devices
+    .map((device) => {
+      const state = device.connected
+        ? "connected"
+        : device.bonded
+          ? "bonded"
+          : "known";
+      return `${device.deviceName} ${state}`;
+    })
+    .join(", ");
 }
 
 function stringValue(value: unknown) {

@@ -22,6 +22,8 @@ Open this folder in Android Studio, select the `app` configuration, and run on a
 
 The example asks for Bluetooth/location/microphone permissions, scans for Mentra Live glasses, and connects to the first discovered device or the saved default.
 
+The Status tab also shows Android-level known Mentra devices. If Android reports a Mentra Live as already connected but this example did not connect it, another app or previous sample process may already own the glasses BLE connection. Only one app can own that connection at a time; close or force-stop the other app, then scan again. If Android knows a bonded device but scan does not return a useful advertisement, the example can connect directly by address through the SDK.
+
 The app is split into native Android tabs:
 
 - **Status** shows connection/data-channel state, battery, Wi-Fi, firmware/version details, and recent hardware events.

@@ -51,6 +51,7 @@ sdk.startScan(MentraDeviceModel.MENTRA_LIVE)
 sdk.stopScan()
 sdk.connect(device)
 sdk.connectByName(MentraDeviceModel.MENTRA_LIVE, "Mentra Live 1234")
+sdk.connectByAddress(MentraDeviceModel.MENTRA_LIVE, "2C:BA:CA:25:E6:13", "Mentra_Live_E613")
 sdk.connectDefault()
 sdk.connectSimulated()
 sdk.disconnect()
@@ -70,7 +71,7 @@ sdk.disconnect()
 sdk.forget()
 ```
 
-Prefer connecting to a `MentraDiscoveredDevice` returned by the SDK. Use name/default connection helpers for simple pairing UIs.
+Prefer connecting to a `MentraDiscoveredDevice` returned by the SDK. Use name/default connection helpers for simple pairing UIs. On Android, use `connectByAddress(...)` only for a device address returned by the SDK or by `getKnownDevices(...)`.
 
 ## Status
 
@@ -79,6 +80,7 @@ Android:
 ```kotlin
 val glasses = sdk.getGlassesStatus()
 val bluetooth = sdk.getBluetoothStatus()
+val knownMentraLiveDevices = sdk.getKnownDevices(MentraDeviceModel.MENTRA_LIVE)
 ```
 
 iOS:
@@ -89,6 +91,10 @@ let bluetooth = sdk.bluetoothStatus
 ```
 
 Status snapshots are safe to read at any time. Treat command success as "command accepted"; keep UI state derived from status callbacks.
+
+On Android, `getKnownDevices(model)` returns matching devices that Android already knows through system Bluetooth. It includes the device name, address, bond state, and Android system connection state. This is useful when a scan starts but returns no SDK devices because another app or previous SDK process may already own the glasses BLE connection.
+
+Only one app can own a glasses BLE connection at a time. Android public APIs do not reveal which package owns that connection, so apps should present this as "another app may already be connected" rather than naming a specific app.
 
 ## Display
 
