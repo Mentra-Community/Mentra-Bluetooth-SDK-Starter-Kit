@@ -34,6 +34,8 @@ The public SDK API exposes typed native commands and typed native events. Partne
 
 - `examples/android`: bare Android Kotlin app using `com.mentra:bluetooth-sdk`
 - `examples/ios`: bare iOS SwiftUI app using the `MentraBluetoothSDK` CocoaPod
+- `examples/android-webrtc-receiver`: Android GStreamer spike for direct Mentra Live WHIP/WebRTC receive on the phone
+- `examples/ios-webrtc-receiver`: iOS GStreamer spike for direct Mentra Live WHIP/WebRTC receive on the phone
 - `examples/react-native`: optional React Native/Expo example for partners who have explicit access to that integration path
 - `examples/local-demo-cloud`: recommended local companion service for photo upload and streaming demos
 - `examples/photo-webhook-server`: local photo upload receiver for camera demos

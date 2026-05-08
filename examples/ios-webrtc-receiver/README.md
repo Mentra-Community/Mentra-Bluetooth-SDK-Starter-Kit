@@ -20,6 +20,8 @@ No MediaMTX, Docker, web preview server, or Mac-side media receiver is used for 
 /Users/philippe/Library/Developer/GStreamer/iPhone.sdk/GStreamer.framework
 ```
 
+  This spike used the official GStreamer iOS SDK download from `https://gstreamer.freedesktop.org/data/pkg/ios/1.28.2/`, installed locally under `/Users/philippe/Library/Developer/GStreamer/iPhone.sdk`. The SDK binary is intentionally not committed.
+
 - Local Mentra Bluetooth SDK source available at the same path used by the partner-kit iOS example:
 
 ```sh

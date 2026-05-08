@@ -44,3 +44,12 @@ examples/ios-webrtc-receiver/build/
 examples/ios-webrtc-receiver/**/*.xcuserstate
 examples/ios-webrtc-receiver/**/xcuserdata/
 examples/ios-webrtc-receiver/**/project.xcworkspace/
+
+# Android direct WebRTC receiver example generated files.
+examples/android-webrtc-receiver/.gradle/
+examples/android-webrtc-receiver/.idea/
+examples/android-webrtc-receiver/**/build/
+examples/android-webrtc-receiver/app/gst-android-build/
+examples/android-webrtc-receiver/**/*.iml
+examples/android-webrtc-receiver/app/src/main/assets/
+examples/android-webrtc-receiver/local.properties
