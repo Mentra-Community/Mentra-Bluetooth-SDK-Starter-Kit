@@ -34,3 +34,13 @@ examples/ios/build/
 examples/ios/**/*.xcuserstate
 examples/ios/**/xcuserdata/
 examples/ios/**/project.xcworkspace/
+
+# iOS direct WebRTC receiver example generated files.
+examples/ios-webrtc-receiver/Pods/
+examples/ios-webrtc-receiver/Podfile.lock
+examples/ios-webrtc-receiver/*.xcworkspace/
+examples/ios-webrtc-receiver/DerivedData/
+examples/ios-webrtc-receiver/build/
+examples/ios-webrtc-receiver/**/*.xcuserstate
+examples/ios-webrtc-receiver/**/xcuserdata/
+examples/ios-webrtc-receiver/**/project.xcworkspace/

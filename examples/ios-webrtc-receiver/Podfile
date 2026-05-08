@@ -1,0 +1,20 @@
+platform :ios, '16.0'
+
+source 'https://cdn.cocoapods.org/'
+
+mentra_sdk_version = ENV['MENTRA_BLUETOOTH_SDK_VERSION'] || '0.1.0'
+local_sdk_path = ENV['MENTRA_BLUETOOTH_SDK_LOCAL_PATH']
+default_local_sdk_path = File.expand_path('../../../MentraOS-philippe-os-1178-mentra-bluetooth-sdk/mobile/modules/bluetooth-sdk/ios', __dir__)
+if (!local_sdk_path || local_sdk_path.empty?) && Dir.exist?(default_local_sdk_path)
+  local_sdk_path = default_local_sdk_path
+end
+
+target 'MentraExample' do
+  use_frameworks!
+
+  if local_sdk_path && !local_sdk_path.empty?
+    pod 'MentraBluetoothSDK', :path => local_sdk_path
+  else
+    pod 'MentraBluetoothSDK', mentra_sdk_version
+  end
+end
