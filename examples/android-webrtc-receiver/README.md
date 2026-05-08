@@ -14,19 +14,22 @@ No MediaMTX, Docker, web preview server, or Mac-side media receiver is used for 
 
 - Android Studio or command-line Android SDK/NDK tooling.
 - A physical Android phone with Bluetooth and local network access enabled.
-- GStreamer Android SDK installed at:
+- GStreamer Android SDK from the official GStreamer Android package:
 
 ```sh
-/Users/philippe/Library/Developer/GStreamer/Android.sdk
+./scripts/setup-gstreamer-android.sh
 ```
 
-  This spike used the official GStreamer Android universal SDK download from `https://gstreamer.freedesktop.org/data/pkg/android/1.28.2/gstreamer-1.0-android-universal-1.28.2.tar.xz`, verified with the matching `.sha256sum`, and extracted locally under `/Users/philippe/Library/Developer/GStreamer/Android.sdk`. The SDK binary is intentionally not committed.
+  The script downloads `gstreamer-1.0-android-universal-1.28.2.tar.xz` from `https://gstreamer.freedesktop.org/data/pkg/android/1.28.2/`, verifies the matching `.sha256sum`, and extracts it into `examples/android-webrtc-receiver/.gstreamer/Android.sdk`. The SDK binary is intentionally not committed.
 
-- Local Mentra Bluetooth SDK artifact available through the same Maven setup as `examples/android`.
+- Mentra Bluetooth SDK available through Maven.
+
+  By default the app uses `com.mentra:bluetooth-sdk:0.1.0` from `gradle.properties`. The Gradle settings include `mavenLocal()`, so for local SDK development publish the SDK to Maven local first, then build this app. Once hosted partner artifacts are available, update `mentraSdkVersion` or pass `-PmentraSdkVersion=<version>`.
+
 - A Mentra Live device powered on and available over BLE.
 - The phone and glasses on the same reachable local network.
 
-If your GStreamer SDK is installed somewhere else, set `GSTREAMER_ROOT_ANDROID` before building:
+If your GStreamer SDK is installed somewhere else, set `GSTREAMER_ROOT_ANDROID` before building, or pass `-PgstreamerRootAndroid=/path/to/Android.sdk`:
 
 ```sh
 export GSTREAMER_ROOT_ANDROID=/path/to/GStreamer/Android.sdk
@@ -37,34 +40,39 @@ export GSTREAMER_ROOT_ANDROID=/path/to/GStreamer/Android.sdk
 Build the debug APK:
 
 ```sh
-cd /Users/philippe/dev/Mentra-Bluetooth-SDK-Partner-Kit-ios-webrtc-receiver/examples/android-webrtc-receiver
+cd examples/android-webrtc-receiver
+./scripts/setup-gstreamer-android.sh
 ./gradlew :app:assembleDebug
 ```
 
 Install on the connected Android phone:
 
 ```sh
-adb -s R5CN80W6MZA install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Launch normally from the phone, or launch an autorun session against the lab glasses:
+Launch normally from the phone, or launch an autorun session against a known glasses BLE name:
 
 ```sh
-adb -s R5CN80W6MZA shell am start \
+GLASSES_NAME=Mentra_Live_XXXX
+
+adb shell am start \
   -n com.mentra.examples.androidwebrtcreceiver/.MainActivity \
   --ez autorun true \
-  --es target Mentra_Live_E613
+  --es target "$GLASSES_NAME"
 ```
 
 For teardown verification, add `--el autoStopAfter <seconds>` to call the same stop path as the Stop button:
 
 ```sh
-adb -s R5CN80W6MZA shell am start \
+adb shell am start \
   -n com.mentra.examples.androidwebrtcreceiver/.MainActivity \
   --ez autorun true \
-  --es target Mentra_Live_E613 \
+  --es target "$GLASSES_NAME" \
   --el autoStopAfter 10
 ```
+
+If multiple Android devices are connected, set `ANDROID_SERIAL=<adb serial>` or add `adb -s <adb serial>` to the commands above.
 
 ## App Flow
 
@@ -84,20 +92,24 @@ adb -s R5CN80W6MZA shell am start \
 - `gstreamer_whip_receiver.c` uses `whipserversrc` constrained to H.264/Opus, inserts `h264parse` through `request-encoded-filter`, decodes H.264 with `openh264dec`, and renders raw frames through `appsink` into Compose.
 - The receiver deliberately raises `openh264dec` rank and lowers AndroidMedia video decoder ranks. On the tested Note 20, the platform AVC decoder reported that only direct rendering was supported, which does not fit this spike's raw-frame `appsink` preview path.
 - The app sends Bluetooth SDK stream keep-alives every 15 seconds while streaming.
+- The Gradle project defaults `GSTREAMER_ROOT_ANDROID` to `examples/android-webrtc-receiver/.gstreamer/Android.sdk`; override it with the environment variable or `-PgstreamerRootAndroid`.
 
 ## Verification Notes
 
 The lab setup used during the spike:
 
-- Android Note 20 adb serial `R5CN80W6MZA`.
-- Mentra Live glasses adb serial `0123456789ABCDEF`.
+- A physical Android Note 20 connected over USB.
+- Mentra Live glasses connected over USB for ASG client logs.
 - Mentra Live BLE target `Mentra_Live_E613`.
 
 Useful log watchers:
 
 ```sh
-adb -s R5CN80W6MZA logcat -v threadtime | rg -i "Mentra|GStreamer|GST|WHIP|webrtc|status|error"
-adb -s 0123456789ABCDEF logcat -v threadtime | rg -i "WhipStreamingService|WHIP|stream_status|PeerConnection|IceConnection|error"
+PHONE_SERIAL=replace-with-phone-adb-serial
+GLASSES_SERIAL=replace-with-glasses-adb-serial
+
+adb -s "$PHONE_SERIAL" logcat -v threadtime | rg -i "Mentra|GStreamer|GST|WHIP|webrtc|status|error"
+adb -s "$GLASSES_SERIAL" logcat -v threadtime | rg -i "WhipStreamingService|WHIP|stream_status|PeerConnection|IceConnection|error"
 ```
 
 If the stream does not start or the glasses privacy LED does not turn on, inspect the ASG client logs from the glasses before assuming the Android receiver is the failing side.
@@ -105,7 +117,7 @@ If the stream does not start or the glasses privacy LED does not turn on, inspec
 ## Known Limitations
 
 - This is a spike app, not a polished reference UI.
-- The default GStreamer SDK path is absolute and local-machine specific.
+- The GStreamer SDK binary is not committed. Run the setup script, or install the official SDK yourself and set `GSTREAMER_ROOT_ANDROID`.
 - The native bridge currently builds only `arm64-v8a`.
 - The receiver is constrained to H.264/Opus.
 - The preview is downscaled to `480x270` in the pipeline and copied through `appsink`, which is simple and stable for this demo but not the most efficient renderer.

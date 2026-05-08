@@ -14,7 +14,6 @@
 		A1B2C3D4E5F60718293A4B5C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C1B2C3D4E5F60718293A4B5C /* Assets.xcassets */; };
 		E10000000000000000000001 /* GStreamerWhipReceiver.m in Sources */ = {isa = PBXBuildFile; fileRef = E10000000000000000000005 /* GStreamerWhipReceiver.m */; };
 		E10000000000000000000002 /* gst_ios_init.m in Sources */ = {isa = PBXBuildFile; fileRef = E10000000000000000000008 /* gst_ios_init.m */; };
-		E10000000000000000000003 /* GStreamer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E10000000000000000000009 /* GStreamer.framework */; };
 		E1000000000000000000000B /* WhipHeaderProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1000000000000000000000A /* WhipHeaderProxy.swift */; };
 /* End PBXBuildFile section */
 
@@ -30,7 +29,6 @@
 		E10000000000000000000006 /* MentraExample-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "MentraExample-Bridging-Header.h"; sourceTree = "<group>"; };
 		E10000000000000000000007 /* gst_ios_init.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gst_ios_init.h; sourceTree = "<group>"; };
 		E10000000000000000000008 /* gst_ios_init.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = gst_ios_init.m; sourceTree = "<group>"; };
-		E10000000000000000000009 /* GStreamer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GStreamer.framework; path = /Users/philippe/Library/Developer/GStreamer/iPhone.sdk/GStreamer.framework; sourceTree = "<absolute>"; };
 		E1000000000000000000000A /* WhipHeaderProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhipHeaderProxy.swift; sourceTree = "<group>"; };
 		EA0ECF511371DFD443892300 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		FFBF10A3E7C9332B4E988290 /* Pods-MentraExample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MentraExample.release.xcconfig"; path = "Target Support Files/Pods-MentraExample/Pods-MentraExample.release.xcconfig"; sourceTree = "<group>"; };
@@ -41,7 +39,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E10000000000000000000003 /* GStreamer.framework in Frameworks */,
 				3A1D208A605A557E32A35AAF /* Pods_MentraExample.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -97,7 +94,6 @@
 		FBE17ACED547FADA501AB9DB /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				E10000000000000000000009 /* GStreamer.framework */,
 				D43C5E9E9C7C6DB117B9DA91 /* Pods_MentraExample.framework */,
 			);
 			name = Frameworks;
@@ -254,11 +250,12 @@
 				ENABLE_DEBUG_DYLIB = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(HOME)/Library/Developer/GStreamer/iPhone.sdk",
+					"$(GSTREAMER_ROOT_IOS)",
 				);
+				GSTREAMER_ROOT_IOS = "$(HOME)/Library/Developer/GStreamer/iPhone.sdk";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(HOME)/Library/Developer/GStreamer/iPhone.sdk/GStreamer.framework/Headers",
+					"$(GSTREAMER_ROOT_IOS)/GStreamer.framework/Headers",
 				);
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Mentra Bluetooth SDK uses Bluetooth to discover and connect to smart glasses.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Mentra Bluetooth SDK examples request photo capture from connected smart glasses.";
@@ -274,6 +271,8 @@
 					"-lresolv",
 					"-liconv",
 					"-lc++",
+					"-framework",
+					GStreamer,
 					"-framework",
 					CoreFoundation,
 					"-framework",
@@ -314,11 +313,12 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(HOME)/Library/Developer/GStreamer/iPhone.sdk",
+					"$(GSTREAMER_ROOT_IOS)",
 				);
+				GSTREAMER_ROOT_IOS = "$(HOME)/Library/Developer/GStreamer/iPhone.sdk";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(HOME)/Library/Developer/GStreamer/iPhone.sdk/GStreamer.framework/Headers",
+					"$(GSTREAMER_ROOT_IOS)/GStreamer.framework/Headers",
 				);
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Mentra Bluetooth SDK uses Bluetooth to discover and connect to smart glasses.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Mentra Bluetooth SDK examples request photo capture from connected smart glasses.";
@@ -334,6 +334,8 @@
 					"-lresolv",
 					"-liconv",
 					"-lc++",
+					"-framework",
+					GStreamer,
 					"-framework",
 					CoreFoundation,
 					"-framework",

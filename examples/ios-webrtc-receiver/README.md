@@ -14,19 +14,17 @@ No MediaMTX, Docker, web preview server, or Mac-side media receiver is used for 
 
 - Xcode with a physical iPhone selected for development.
 - CocoaPods.
-- GStreamer iOS SDK installed at:
+- GStreamer iOS SDK from the official GStreamer iOS package:
 
 ```sh
-/Users/philippe/Library/Developer/GStreamer/iPhone.sdk/GStreamer.framework
+./scripts/setup-gstreamer-ios.sh
 ```
 
-  This spike used the official GStreamer iOS SDK download from `https://gstreamer.freedesktop.org/data/pkg/ios/1.28.2/`, installed locally under `/Users/philippe/Library/Developer/GStreamer/iPhone.sdk`. The SDK binary is intentionally not committed.
+  The script downloads `gstreamer-1.0-devel-1.28.2-ios-universal.pkg` from `https://gstreamer.freedesktop.org/data/pkg/ios/1.28.2/`, verifies the matching `.sha256sum`, and installs the SDK at the package default location: `$HOME/Library/Developer/GStreamer/iPhone.sdk`. The SDK binary is intentionally not committed.
 
-- Local Mentra Bluetooth SDK source available at the same path used by the partner-kit iOS example:
+- Mentra Bluetooth SDK available through CocoaPods.
 
-```sh
-/Users/philippe/dev/MentraOS-philippe-os-1178-mentra-bluetooth-sdk/mobile/modules/bluetooth-sdk/ios
-```
+  By default the Podfile uses `MentraBluetoothSDK` version `0.1.0`. Override with `MENTRA_BLUETOOTH_SDK_VERSION` once published versions are available. For local SDK development, point CocoaPods at a local checkout with `MENTRA_BLUETOOTH_SDK_LOCAL_PATH=/path/to/bluetooth-sdk/ios pod install`.
 
 - A Mentra Live device powered on and available over BLE.
 - The iPhone and glasses on the same reachable local network.
@@ -35,23 +33,33 @@ The app includes `NSLocalNetworkUsageDescription`. On first stream start, iOS ma
 
 ## Run
 
-Install pods once:
+From the repo root:
 
 ```sh
-cd /Users/philippe/dev/Mentra-Bluetooth-SDK-Partner-Kit-ios-webrtc-receiver/examples/ios-webrtc-receiver
+cd examples/ios-webrtc-receiver
+./scripts/setup-gstreamer-ios.sh
 pod install
 ```
 
-Build for the connected iPhone:
+If the GStreamer SDK lives somewhere else, pass the build setting when building:
 
 ```sh
+xcodebuild ... GSTREAMER_ROOT_IOS=/path/to/iPhone.sdk
+```
+
+Build for a connected iPhone:
+
+```sh
+DEVICE_ID=replace-with-devicectl-id
+DEVELOPMENT_TEAM=replace-with-apple-team-id
+
 xcodebuild \
   -workspace MentraExample.xcworkspace \
   -scheme MentraExample \
   -configuration Debug \
-  -destination 'id=00008120-001619E102E1A01E' \
+  -destination "id=$DEVICE_ID" \
   -derivedDataPath build/DerivedData \
-  DEVELOPMENT_TEAM=T5XXXL6N36 \
+  DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
   CODE_SIGN_STYLE=Automatic \
   build
 ```
@@ -60,31 +68,33 @@ Install:
 
 ```sh
 xcrun devicectl device install app \
-  --device 8454AEAE-49C6-5145-89D0-590945B637DE \
+  --device "$DEVICE_ID" \
   build/DerivedData/Build/Products/Debug-iphoneos/MentraWebRTCReceiver.app
 ```
 
-Launch normally from the iPhone, or launch an autorun session against the lab glasses:
+Launch normally from the iPhone, or launch an autorun session against a known glasses BLE name:
 
 ```sh
+GLASSES_NAME=Mentra_Live_XXXX
+
 xcrun devicectl device process launch \
-  --device 8454AEAE-49C6-5145-89D0-590945B637DE \
+  --device "$DEVICE_ID" \
   --terminate-existing \
   --console \
   --environment-variables '{"GST_DEBUG":"2,webrtc-whip-signaller:5,webrtcsrc:4","GST_DEBUG_NO_COLOR":"1"}' \
   com.mentra.examples.ios-webrtc-receiver \
-  --autorun --target Mentra_Live_E613
+  --autorun --target "$GLASSES_NAME"
 ```
 
 For teardown verification, add `--auto-stop-after <seconds>` to call the same stop path as the Stop button:
 
 ```sh
 xcrun devicectl device process launch \
-  --device 8454AEAE-49C6-5145-89D0-590945B637DE \
+  --device "$DEVICE_ID" \
   --terminate-existing \
   --console \
   com.mentra.examples.ios-webrtc-receiver \
-  --autorun --target Mentra_Live_E613 --auto-stop-after 10
+  --autorun --target "$GLASSES_NAME" --auto-stop-after 10
 ```
 
 ## App Flow
@@ -104,14 +114,15 @@ xcrun devicectl device process launch \
 - The proxy normalizes WHIP `Content-Type` headers because the current GStreamer `whipserversrc` route rejects `application/sdp; charset=utf-8`.
 - `GStreamerWhipReceiver.m` uses `whipserversrc` constrained to H.264/Opus, inserts `h264parse` through `request-encoded-filter`, decodes through GStreamer/VideoToolbox, and renders frames through an `appsink` into a SwiftUI-hosted `UIView`.
 - The app sends Bluetooth SDK stream keep-alives every 15 seconds while streaming.
+- The Xcode project defaults `GSTREAMER_ROOT_IOS` to `$HOME/Library/Developer/GStreamer/iPhone.sdk`; override it with an `xcodebuild` build setting or in Xcode if you installed the SDK elsewhere.
 
 ## Verified Spike State
 
 Verified on May 8, 2026 with:
 
-- iPhone 15 device identifier `8454AEAE-49C6-5145-89D0-590945B637DE`.
+- A physical iPhone 15 connected over USB.
 - Mentra Live `Mentra_Live_E613`.
-- Phone-local WHIP URL `http://192.168.50.124:8190/whip/endpoint`.
+- A phone-local WHIP URL shaped like `http://<iphone-ip>:8190/whip/endpoint`.
 
 Observed:
 
@@ -126,7 +137,7 @@ Observed:
 ## Known Limitations
 
 - This is a spike app, not a polished reference UI.
-- The GStreamer framework path is absolute and local-machine specific.
+- The GStreamer SDK binary is not committed. Run the setup script, or install the official SDK yourself and set `GSTREAMER_ROOT_IOS`.
 - Preview rendering currently copies decoded BGRA frames through `appsink`, which is simple and stable for the demo but not the most efficient renderer.
 - The preview is downscaled to `480x270` in the pipeline.
 - GStreamer may log an ORC JIT warning under the iOS hardened runtime; the demo still renders without requiring JIT.

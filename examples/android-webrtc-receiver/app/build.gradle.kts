@@ -6,11 +6,20 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val gstreamerRoot = providers.environmentVariable("GSTREAMER_ROOT_ANDROID")
-    .orElse("/Users/philippe/Library/Developer/GStreamer/Android.sdk")
+val defaultGstreamerRoot = layout.projectDirectory.dir("../.gstreamer/Android.sdk").asFile
+val gstreamerRoot = providers.gradleProperty("gstreamerRootAndroid")
+    .orElse(providers.environmentVariable("GSTREAMER_ROOT_ANDROID"))
+    .orElse(providers.provider { defaultGstreamerRoot.absolutePath })
 val gstreamerRootFile = File(gstreamerRoot.get())
 val gstreamerArm64RootFile = File(gstreamerRootFile, "arm64").takeIf { it.isDirectory } ?: gstreamerRootFile
 val gstreamerGeneratedJavaDir = layout.buildDirectory.dir("generated/gstreamer/java").get().asFile
+
+if (!File(gstreamerArm64RootFile, "share/gst-android/ndk-build/gstreamer-1.0.mk").isFile) {
+    throw GradleException(
+        "GStreamer Android SDK was not found at ${gstreamerRootFile.absolutePath}. " +
+            "Run ./scripts/setup-gstreamer-android.sh or set GSTREAMER_ROOT_ANDROID=/path/to/Android.sdk."
+    )
+}
 
 android {
     namespace = "com.mentra.examples.androidwebrtcreceiver"
