@@ -14,8 +14,8 @@ import BluetoothSdk, {
   type MicPcmEvent,
   type PhotoResponseEvent,
   type RgbLedControlResponseEvent,
-  type SpeakingStatusEvent,
   type StreamStatusEvent,
+  type SpeakingStatusEvent,
   type TouchEvent,
   type VoiceActivityDetectionStatusEvent,
 } from '@mentra/bluetooth-sdk';
@@ -247,7 +247,9 @@ export function useBluetoothSdkExample(): BluetoothSdkExampleModel {
   const [pcmFrames, setPcmFrames] = useState(0);
   const [pcmBytes, setPcmBytes] = useState(0);
   const [speaking, setSpeaking] = useState<boolean | null>(null);
+  const voiceActivityDetectionEnabledRef = useRef(true);
   const [voiceActivityDetectionEnabled, setVoiceActivityDetectionEnabledState] = useState(true);
+  voiceActivityDetectionEnabledRef.current = voiceActivityDetectionEnabled;
   const [lastMicBytes, setLastMicBytes] = useState(0);
   const [lastMicDurationSeconds, setLastMicDurationSeconds] = useState<number | null>(null);
   const [micPlaybackHint, setMicPlaybackHint] = useState<string | null>(null);
@@ -333,15 +335,28 @@ export function useBluetoothSdkExample(): BluetoothSdkExampleModel {
           `${gesture.toLowerCase().includes('swipe') ? 'swipe' : 'touch'} ${gesture}`,
         );
       }),
-      BluetoothSdk.addListener('voice_activity_detection_status', (payload: VoiceActivityDetectionStatusEvent) => {
-        setVoiceActivityDetectionEnabledState(payload.voiceActivityDetectionEnabled);
-        if (!payload.voiceActivityDetectionEnabled) {
-          setSpeaking(null);
-        }
-        addEvent('LIVE', `voice activity detection ${payload.voiceActivityDetectionEnabled ? 'enabled' : 'disabled'}`);
-      }),
       BluetoothSdk.addListener('speaking_status', (payload: SpeakingStatusEvent) => {
+        if (!voiceActivityDetectionEnabledRef.current) {
+          return;
+        }
         setSpeaking(payload.speaking);
+        addEvent('LIVE', `speech ${payload.speaking ? 'detected' : 'idle'}`);
+      }),
+      BluetoothSdk.addListener(
+        'voice_activity_detection_status',
+        (payload: VoiceActivityDetectionStatusEvent) => {
+          setVoiceActivityDetectionEnabledState(payload.voiceActivityDetectionEnabled);
+          addEvent(
+            'LIVE',
+            `VAD ${payload.voiceActivityDetectionEnabled ? 'enabled (gated LC3)' : 'disabled (continuous)'}`,
+          );
+        },
+      ),
+      BluetoothSdk.addListener('switch_status', (payload) => {
+        addEvent('LIVE', `switch_status type=${payload.switchType} value=${payload.switchValue}`);
+        if (payload.switchType === 8 && (payload.switchValue === 0 || payload.switchValue === 1)) {
+          setVoiceActivityDetectionEnabledState(payload.switchValue === 1);
+        }
       }),
       BluetoothSdk.addListener('battery_status', (payload) => {
         addEvent('STORE', `battery ${payload.level}%${payload.charging ? ' charging' : ''}`);
@@ -1169,11 +1184,19 @@ export function useBluetoothSdkExample(): BluetoothSdkExampleModel {
   }
 
   async function setVoiceActivityDetectionEnabledAction(enabled: boolean) {
-    await runAction(enabled ? 'Enable voice activity detection' : 'Disable voice activity detection', async () => {
-      requireConnected('change voice activity detection');
-      setVoiceActivityDetectionEnabledState(enabled);
-      await BluetoothSdk.setVoiceActivityDetectionEnabled(enabled);
-    });
+    await runAction(
+      enabled ? 'Enable voice activity detection' : 'Disable voice activity detection',
+      async () => {
+        requireConnected('change voice activity detection');
+        setVoiceActivityDetectionEnabledState(enabled);
+        if (!enabled) {
+          setSpeaking(null);
+        }
+        await BluetoothSdk.setVoiceActivityDetectionEnabled(enabled);
+        addEvent('TX', `cs_swit VAD ${enabled ? 'on' : 'off'}`);
+        await BluetoothSdk.queryVoiceActivityDetectionEnabled();
+      },
+    );
   }
 
   async function openBluetoothSettings() {
