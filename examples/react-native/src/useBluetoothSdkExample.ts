@@ -40,6 +40,7 @@ import {
 import MentraBarcodeScanner, {
   type BarcodeScanResult,
   type ImageFovEstimate,
+  type ImageImuMetadata,
 } from '@mentra/react-native-barcode-scanner';
 import MentraPhotoReceiver, {
   type PhotoReceiverResult,
@@ -168,6 +169,7 @@ export type PhotoPreviewDetails = {
   estimatedFov?: ImageFovEstimate | null;
   focalLength35mm?: number | null;
   height?: number;
+  imuMetadata?: ImageImuMetadata | null;
   previewUrl?: string;
   requestId?: string | null;
   resolvedConfig?: PhotoStatusEvent['resolvedConfig'];
@@ -1969,6 +1971,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
               estimatedFov: metadata.estimatedFov,
               focalLength35mm: metadata.focalLength35mm,
               height: metadata.height ?? current.height,
+              imuMetadata: metadata.imuMetadata ?? current.imuMetadata,
               width: metadata.width ?? current.width,
             }
           : current,
