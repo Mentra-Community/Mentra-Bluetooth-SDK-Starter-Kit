@@ -90,7 +90,125 @@ public class MentraBarcodeScannerModule: Module {
       "height": height,
       "focalLength35mm": focalLength35mm,
       "estimatedFov": estimatedFov(width: width, height: height, focalLength35mm: focalLength35mm),
+      "imuMetadata": imuMetadata(from: exif),
     ]
+  }
+
+  private func imuMetadata(from exif: [String: Any]?) -> [String: Any?]? {
+    guard
+      let json = userCommentJson(exif?[kCGImagePropertyExifUserComment as String]),
+      let data = json.data(using: .utf8),
+      let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    else {
+      return nil
+    }
+
+    let samples = payload["samples"] as? [Any]
+    return [
+      "version": positiveIntValue(payload["version"]),
+      "sampleCount": positiveIntValue(payload["sampleCount"]),
+      "samplingRateHz": positiveIntValue(payload["samplingRateHz"]),
+      "durationMs": nonNegativeDouble(payload["durationMs"]),
+      "clockSource": nonEmptyString(payload["clockSource"]),
+      "startTimeNs": stringValue(payload["startTimeNs"]),
+      "recordingStartElapsedRealtimeNs": stringValue(payload["recordingStartElapsedRealtimeNs"]),
+      "videoStartElapsedRealtimeNs": stringValue(payload["videoStartElapsedRealtimeNs"]),
+      "exifTruncated": boolValue(payload["exifTruncated"]),
+      "firstSample": sampleSummary(samples?.first),
+      "lastSample": sampleSummary(samples?.last),
+    ]
+  }
+
+  private func userCommentJson(_ value: Any?) -> String? {
+    let raw: String?
+    if let string = value as? String {
+      raw = string
+    } else if let data = value as? Data {
+      raw = String(data: data, encoding: .utf8)
+    } else if let nsData = value as? NSData {
+      raw = String(data: nsData as Data, encoding: .utf8)
+    } else {
+      raw = nil
+    }
+    guard let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
+          let start = trimmed.firstIndex(of: "{"),
+          let end = trimmed.lastIndex(of: "}"),
+          start < end else {
+      return nil
+    }
+    return String(trimmed[start...end])
+  }
+
+  private func sampleSummary(_ sample: Any?) -> [String: Any?]? {
+    guard let values = sample as? [Any], values.count >= 7 else {
+      return nil
+    }
+    return [
+      "relativeTimeMs": nonNegativeDouble(values[0]),
+      "accel": vector(values, offset: 1),
+      "gyro": vector(values, offset: 4),
+    ]
+  }
+
+  private func vector(_ values: [Any], offset: Int) -> [Double]? {
+    guard values.count >= offset + 3,
+          let x = doubleValue(values[offset]),
+          let y = doubleValue(values[offset + 1]),
+          let z = doubleValue(values[offset + 2]) else {
+      return nil
+    }
+    return [x, y, z]
+  }
+
+  private func positiveIntValue(_ value: Any?) -> Int? {
+    guard let number = doubleValue(value), number > 0 else {
+      return nil
+    }
+    return Int(number)
+  }
+
+  private func nonNegativeDouble(_ value: Any?) -> Double? {
+    guard let number = doubleValue(value), number >= 0 else {
+      return nil
+    }
+    return number
+  }
+
+  private func doubleValue(_ value: Any?) -> Double? {
+    if let number = value as? NSNumber {
+      return number.doubleValue
+    }
+    if let string = value as? String {
+      return Double(string)
+    }
+    return nil
+  }
+
+  private func stringValue(_ value: Any?) -> String? {
+    if let number = value as? NSNumber {
+      return number.stringValue
+    }
+    if let string = value as? String {
+      return string.isEmpty ? nil : string
+    }
+    return nil
+  }
+
+  private func boolValue(_ value: Any?) -> Bool? {
+    if let bool = value as? Bool {
+      return bool
+    }
+    if let number = value as? NSNumber {
+      return number.boolValue
+    }
+    return nil
+  }
+
+  private func nonEmptyString(_ value: Any?) -> String? {
+    guard let string = value as? String, !string.isEmpty else {
+      return nil
+    }
+    return string
   }
 
   private func openImage(imageUri: String) throws {

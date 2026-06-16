@@ -28,10 +28,31 @@ export type ImageFovEstimate = {
   verticalDegrees: number;
 };
 
+export type ImageImuSample = {
+  accel?: [number, number, number] | null;
+  gyro?: [number, number, number] | null;
+  relativeTimeMs?: number | null;
+};
+
+export type ImageImuMetadata = {
+  clockSource?: string | null;
+  durationMs?: number | null;
+  exifTruncated?: boolean | null;
+  firstSample?: ImageImuSample | null;
+  lastSample?: ImageImuSample | null;
+  recordingStartElapsedRealtimeNs?: string | null;
+  sampleCount?: number | null;
+  samplingRateHz?: number | null;
+  startTimeNs?: string | null;
+  version?: number | null;
+  videoStartElapsedRealtimeNs?: string | null;
+};
+
 export type ImageMetadata = {
   estimatedFov?: ImageFovEstimate | null;
   focalLength35mm?: number | null;
   height?: number | null;
+  imuMetadata?: ImageImuMetadata | null;
   width?: number | null;
 };
 

@@ -23,6 +23,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.math.atan
 import kotlin.math.sqrt
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MentraBarcodeScannerModule : Module() {
   override fun definition() = ModuleDefinition {
@@ -103,7 +105,78 @@ class MentraBarcodeScannerModule : Module() {
       put("height", height)
       put("focalLength35mm", focalLength35mm)
       put("estimatedFov", estimatedFov(width, height, focalLength35mm))
+      put("imuMetadata", imuMetadata(exif))
     }
+  }
+
+  private fun imuMetadata(exif: ExifInterface?): Map<String, Any?>? {
+    val json = userCommentJson(exif?.getAttribute(ExifInterface.TAG_USER_COMMENT)) ?: return null
+    return runCatching {
+      val payload = JSONObject(json)
+      val samples = payload.optJSONArray("samples")
+      buildMap {
+        put("version", positiveInt(payload.optInt("version", 0)))
+        put("sampleCount", positiveInt(payload.optInt("sampleCount", 0)))
+        put("samplingRateHz", positiveInt(payload.optInt("samplingRateHz", 0)))
+        put("durationMs", nonNegativeDouble(payload.opt("durationMs")))
+        put("clockSource", payload.optString("clockSource").takeIf { it.isNotBlank() })
+        put("startTimeNs", longString(payload, "startTimeNs"))
+        put("recordingStartElapsedRealtimeNs", longString(payload, "recordingStartElapsedRealtimeNs"))
+        put("videoStartElapsedRealtimeNs", longString(payload, "videoStartElapsedRealtimeNs"))
+        put("exifTruncated", payload.opt("exifTruncated") as? Boolean)
+        put("firstSample", sampleSummary(samples?.optJSONArray(0)))
+        put("lastSample", sampleSummary(samples?.optJSONArray((samples.length() - 1).coerceAtLeast(0))))
+      }
+    }.getOrNull()
+  }
+
+  private fun userCommentJson(userComment: String?): String? {
+    val trimmed = userComment?.trim().orEmpty()
+    val start = trimmed.indexOf('{')
+    val end = trimmed.lastIndexOf('}')
+    if (start < 0 || end <= start) {
+      return null
+    }
+    return trimmed.substring(start, end + 1)
+  }
+
+  private fun sampleSummary(sample: JSONArray?): Map<String, Any?>? {
+    if (sample == null || sample.length() < 7) {
+      return null
+    }
+    return mapOf(
+      "relativeTimeMs" to nonNegativeDouble(sample.opt(0)),
+      "accel" to vector(sample, 1),
+      "gyro" to vector(sample, 4),
+    )
+  }
+
+  private fun vector(sample: JSONArray, offset: Int): List<Double>? {
+    if (sample.length() < offset + 3) {
+      return null
+    }
+    return listOf(sample.optDouble(offset), sample.optDouble(offset + 1), sample.optDouble(offset + 2))
+  }
+
+  private fun longString(payload: JSONObject, key: String): String? {
+    if (!payload.has(key)) {
+      return null
+    }
+    val value = payload.opt(key) ?: return null
+    return when (value) {
+      is Number -> value.toLong().toString()
+      is String -> value.takeIf { it.isNotBlank() }
+      else -> null
+    }
+  }
+
+  private fun nonNegativeDouble(value: Any?): Double? {
+    val number = when (value) {
+      is Number -> value.toDouble()
+      is String -> value.toDoubleOrNull()
+      else -> null
+    } ?: return null
+    return number.takeIf { it.isFinite() && it >= 0 }
   }
 
   private fun openImage(imageUri: String) {

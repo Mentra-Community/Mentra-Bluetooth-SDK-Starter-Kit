@@ -1522,6 +1522,7 @@ function photoDetailsRows(details: PhotoPreviewDetails | null) {
   if (details.width && details.height) rows.push({label: 'Dimensions', value: `${details.width} x ${details.height}`});
   if (details.estimatedFov) rows.push({label: 'Estimated FOV', value: formatFovEstimate(details.estimatedFov)});
   else if (details.focalLength35mm) rows.push({label: 'Focal length', value: `${details.focalLength35mm}mm equiv.`});
+  addImuMetadataRows(rows, details.imuMetadata);
   addActualCaptureRows(rows, details.captureMetadata);
   addRequestedCaptureRows(rows, details.requestedCaptureConfig);
   addMeteredPreviewRows(rows, details.meteredPreview);
@@ -1621,6 +1622,38 @@ function addResolvedConfigRows(rows: DetailRow[], config: PhotoPreviewDetails['r
   if (config.iso != null) rows.push({label: 'Resolved ISO', value: String(config.iso)});
 }
 
+function addImuMetadataRows(rows: DetailRow[], metadata: PhotoPreviewDetails['imuMetadata']) {
+  if (!metadata) {
+    return;
+  }
+  if (metadata.sampleCount != null) rows.push({label: 'IMU samples', value: String(metadata.sampleCount)});
+  if (metadata.samplingRateHz != null) rows.push({label: 'IMU rate', value: `${metadata.samplingRateHz} Hz`});
+  if (metadata.durationMs != null) rows.push({label: 'IMU duration', value: `${Math.round(metadata.durationMs)} ms`});
+  if (metadata.exifTruncated) {
+    rows.push({label: 'IMU EXIF', value: 'truncated preview; full sidecar remains on glasses'});
+  }
+  if (metadata.clockSource) rows.push({label: 'IMU clock', value: metadata.clockSource});
+  if (metadata.recordingStartElapsedRealtimeNs) {
+    rows.push({label: 'IMU recording start', value: `${metadata.recordingStartElapsedRealtimeNs} ns`});
+  }
+  if (metadata.startTimeNs) rows.push({label: 'IMU first sample', value: `${metadata.startTimeNs} ns`});
+  addImuSampleRows(rows, 'First IMU', metadata.firstSample);
+  addImuSampleRows(rows, 'Last IMU', metadata.lastSample);
+}
+
+function addImuSampleRows(
+  rows: DetailRow[],
+  prefix: string,
+  sample: NonNullable<PhotoPreviewDetails['imuMetadata']>['firstSample'],
+) {
+  if (!sample) {
+    return;
+  }
+  if (sample.relativeTimeMs != null) rows.push({label: `${prefix} t`, value: `${Math.round(sample.relativeTimeMs)} ms`});
+  if (sample.accel) rows.push({label: `${prefix} accel`, value: formatVector(sample.accel)});
+  if (sample.gyro) rows.push({label: `${prefix} gyro`, value: formatVector(sample.gyro)});
+}
+
 function addRequestedCaptureRows(rows: DetailRow[], config: PhotoPreviewDetails['requestedCaptureConfig']) {
   if (!config) {
     return;
@@ -1699,6 +1732,10 @@ function formatFovEstimate(fov: NonNullable<PhotoPreviewDetails['estimatedFov']>
     `${Math.round(fov.verticalDegrees)}° V`,
     `${fov.focalLength35mm}mm equiv.`,
   ].join(' · ');
+}
+
+function formatVector(values: readonly number[]) {
+  return values.map((value) => formatDecimal(value)).join(', ');
 }
 
 function boolLabel(value: boolean) {
