@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Image } from 'react-native';
+import { ActivityIndicator, View, Text, ScrollView, Pressable, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 import { DeviceModels } from '@mentra/bluetooth-sdk';
@@ -333,6 +333,9 @@ function otaCardTitle(sdk: BluetoothSdkExampleModel) {
   if (sdk.otaStatus?.status === 'failed') {
     return 'Update failed';
   }
+  if (isOtaInstalling(sdk)) {
+    return 'Installing update';
+  }
   if (sdk.otaStatus && isOtaInProgress(sdk)) {
     return `Updating ${sdk.otaStatus.step_type || 'firmware'}`;
   }
@@ -345,6 +348,9 @@ function otaCardTitle(sdk: BluetoothSdkExampleModel) {
 function otaCardDetail(sdk: BluetoothSdkExampleModel) {
   if (sdk.otaStatus?.error_message) {
     return sdk.otaStatus.error_message;
+  }
+  if (isOtaInstalling(sdk)) {
+    return 'The glasses client may restart to finish installation.';
   }
   if (sdk.otaStatus) {
     return `${sdk.otaStatus.phase || 'status'} · step ${sdk.otaStatus.current_step}/${sdk.otaStatus.total_steps}`;
@@ -359,12 +365,17 @@ function otaDisplayPercent(sdk: BluetoothSdkExampleModel) {
   return sdk.otaDisplayPercent ?? sdk.otaStatus?.overall_percent ?? 0;
 }
 
+function isOtaInstalling(sdk: BluetoothSdkExampleModel) {
+  return sdk.otaStatus?.status === 'in_progress' && sdk.otaStatus.phase === 'install';
+}
+
 function OtaCard({ sdk }: { sdk: BluetoothSdkExampleModel }) {
   if (!sdk.otaStatus && !sdk.otaUpdateAvailable) {
     return null;
   }
   const percent = otaDisplayPercent(sdk);
   const updateRequired = sdk.otaUpdateAvailable && !sdk.otaStatus;
+  const installing = isOtaInstalling(sdk);
   return (
     <View style={[styles.otaCard, updateRequired && styles.otaCardRequired]}>
       <View style={styles.otaHead}>
@@ -385,9 +396,13 @@ function OtaCard({ sdk }: { sdk: BluetoothSdkExampleModel }) {
             <Text style={[styles.otaTitle, updateRequired && styles.otaTitleRequired]}>{otaCardTitle(sdk)}</Text>
           </View>
         </View>
-        {sdk.otaStatus ? <Text style={styles.otaPercent}>{percent}%</Text> : null}
+        {installing ? (
+          <ActivityIndicator color={colors.greenPrimary} size="small" />
+        ) : sdk.otaStatus ? (
+          <Text style={styles.otaPercent}>{percent}%</Text>
+        ) : null}
       </View>
-      {sdk.otaStatus ? (
+      {sdk.otaStatus && !installing ? (
         <View style={styles.otaTrack}>
           <View style={[styles.otaFill, { width: `${Math.max(0, Math.min(percent, 100))}%` }]} />
         </View>
