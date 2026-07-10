@@ -107,6 +107,17 @@ function otaVersionInfoSignature(event: VersionInfoResult) {
   ].filter(Boolean).join('|') || 'version-unknown';
 }
 
+function otaAppIdentity(glasses: GlassesRuntimeState) {
+  if (!glasses.connected) {
+    return null;
+  }
+  return [glasses.device.buildNumber, glasses.device.appVersion].filter(Boolean).join('|') || null;
+}
+
+function otaVersionInfoAppIdentity(event: VersionInfoResult) {
+  return [event.buildNumber, event.appVersion].filter(Boolean).join('|') || null;
+}
+
 function versionValue(value: string | null | undefined) {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
@@ -723,6 +734,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
   const glassesConnectedRef = useRef(false);
   const glassesWifiConnectedRef = useRef(false);
   const otaDisplayProgressRef = useRef<{sessionId: string; percent: number} | null>(null);
+  const otaStartingAppIdentityRef = useRef<string | null>(null);
   const postOtaCheckInProgressRef = useRef(false);
   const postOtaCheckedSessionRef = useRef<string | null>(null);
   const [autoOtaCheckRetryTick, setAutoOtaCheckRetryTick] = useState(0);
@@ -801,6 +813,25 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     }
     setLatestVersionInfo(payload);
     setLatestVersionInfoSignature(otaVersionInfoSignature(payload));
+    const installedIdentity = otaVersionInfoAppIdentity(payload);
+    const otaStatus = otaStatusRef.current;
+    if (
+      installedIdentity &&
+      otaStartingAppIdentityRef.current &&
+      installedIdentity !== otaStartingAppIdentityRef.current &&
+      otaStatus?.status === 'in_progress' &&
+      otaStatus.phase === 'install'
+    ) {
+      otaStartingAppIdentityRef.current = null;
+      otaStatusRef.current = null;
+      setOtaStatus(null);
+      clearOtaDisplayProgress();
+      setOtaStatusMessage('OTA installed; checking for additional updates');
+      setOtaUpdateAvailable(false);
+      autoOtaCheckedConnectionRef.current = null;
+      setAutoOtaCheckRetryTick((tick) => tick + 1);
+      addEvent('LIVE', `OTA install restarted ASG client as ${installedIdentity}`);
+    }
   }
 
   useEffect(() => {
@@ -1247,6 +1278,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       addEvent('LIVE', 'OTA check result ignored while update is in progress');
       return updateAvailable;
     }
+    otaStartingAppIdentityRef.current = null;
     clearOtaDisplayProgress();
     if (updateAvailable) {
       otaStatusRef.current = null;
@@ -1327,6 +1359,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       }
       requireGlassesWifi('start OTA updates');
       postOtaCheckedSessionRef.current = null;
+      otaStartingAppIdentityRef.current = otaAppIdentity(glasses);
       clearOtaDisplayProgress();
       await BluetoothSdk.startOtaUpdate();
       addEvent('LIVE', 'OTA start acknowledged');
@@ -3778,6 +3811,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       void disconnectGlassesHotspotWifi(hotspotSsid).catch(() => undefined);
     }
     otaStatusRef.current = null;
+    otaStartingAppIdentityRef.current = null;
     setOtaStatus(null);
     clearOtaDisplayProgress();
     setOtaStatusMessage(null);
@@ -3791,6 +3825,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
   function applyOtaStatus(payload: OtaStatusEvent) {
     if (!isDisplayableOtaStatus(payload)) {
       otaStatusRef.current = null;
+      otaStartingAppIdentityRef.current = null;
       setOtaStatus(null);
       clearOtaDisplayProgress();
       setOtaStatusMessage('No active OTA');
@@ -3805,6 +3840,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     setOtaDisplayPercent(displayPercent);
     setOtaStatusMessage(null);
     if (payload.status === 'complete' || payload.status === 'failed') {
+      otaStartingAppIdentityRef.current = null;
       setOtaUpdateAvailable(false);
     }
     addEvent('LIVE', `OTA ${payload.status} ${payload.overall_percent ?? 0}%`);
