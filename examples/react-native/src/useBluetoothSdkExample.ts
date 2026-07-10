@@ -2991,7 +2991,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
   }
 
   async function prepareGlassesPhotoPreviewAction() {
-    await runAction('Connect to glasses hotspot', prepareGlassesPhotoPreviewConnection);
+    await runAction('Connect to glasses hotspot', () => prepareGlassesPhotoPreviewConnection(true));
   }
 
   async function disableGlassesPhotoPreviewConnection() {
@@ -3011,7 +3011,12 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     }
   }
 
-  async function prepareGlassesPhotoPreviewConnection() {
+  async function prepareGlassesPhotoPreviewConnection(restart = false) {
+    if (restart) {
+      galleryConnectionGenerationRef.current += 1;
+      galleryConnectionPromiseRef.current = null;
+      addEvent('LIVE', 'restarting glasses hotspot connection');
+    }
     if (galleryConnectionPromiseRef.current) {
       return galleryConnectionPromiseRef.current;
     }
