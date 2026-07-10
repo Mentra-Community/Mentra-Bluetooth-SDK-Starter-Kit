@@ -12,10 +12,6 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.mentra.bluetoothsdk.example.reactnative",
-      "entitlements": {
-        "com.apple.developer.networking.HotspotConfiguration": true,
-        "com.apple.developer.networking.wifi-info": true
-      },
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "This example app uses Bluetooth to connect to smart glasses.",
         "NSBluetoothPeripheralUsageDescription": "This example app uses Bluetooth to connect to smart glasses.",
@@ -35,7 +31,6 @@
         "android.permission.BLUETOOTH_CONNECT",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.NEARBY_WIFI_DEVICES",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.INTERNET",
@@ -73,8 +68,7 @@
           "imageWidth": 200
         }
       ],
-      "expo-video",
-      "react-native-wifi-reborn"
+      "expo-video"
     ]
   }
 }

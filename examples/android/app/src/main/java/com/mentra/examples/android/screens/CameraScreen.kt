@@ -18,11 +18,9 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.Icon
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -65,8 +63,6 @@ import com.mentra.examples.android.PhotoDestination
 import com.mentra.examples.android.VideoPreviewDetails
 import com.mentra.examples.android.cameraRoiPositions
 import com.mentra.examples.android.cameraSdkCall
-import com.mentra.examples.android.galleryHotspotPasswordLabel
-import com.mentra.examples.android.galleryHotspotSsidLabel
 import com.mentra.examples.android.isGlassesConnected
 import com.mentra.examples.android.isGlassesWifiConnected
 import com.mentra.examples.android.photoAeExposureDivisorOptions
@@ -97,19 +93,9 @@ fun CameraScreen(controller: MentraExampleController) {
     val state = controller.state
     val connected = isGlassesConnected(state.glassesStatus)
     val glassesWifiConnected = isGlassesWifiConnected(state.glassesStatus)
+    val wifiRequired = connected && !glassesWifiConnected
     val cloudServerEnabled = state.photoDestination == PhotoDestination.MACBOOK_SERVER
-    val glassesStorageEnabled = state.photoDestination == PhotoDestination.GLASSES_STORAGE
-    val directPhone = state.photoDestination == PhotoDestination.THIS_PHONE
-    val waitingForGlassesPreview = glassesStorageEnabled &&
-        state.photoPreviewUrl == null &&
-        state.photoPreviewDetails?.state == "saved"
-    val needsGlassesHotspotSetup = connected && glassesStorageEnabled && state.galleryServerReachable != true
-    val photoControlsEnabled = connected &&
-        (glassesStorageEnabled || glassesWifiConnected) &&
-        !needsGlassesHotspotSetup &&
-        state.activeAction != "Capture & upload" &&
-        state.activeAction != "Capture scan photo"
-    val wifiRequired = connected && !glassesWifiConnected && !glassesStorageEnabled
+    val directPhone = !cloudServerEnabled
     val videoActionBusy = state.activeAction == "Start video recording" || state.activeAction == "Stop & upload video"
     val videoControlsEnabled = connected &&
         glassesWifiConnected &&
@@ -122,7 +108,6 @@ fun CameraScreen(controller: MentraExampleController) {
         if (videoMode) "video" else "photo",
         state.photoSize,
         state.photoCompression,
-        state.photoDestination,
         state.photoAeExposureDivisor,
         state.photoIsoCap,
         state.photoNoiseReduction,
@@ -149,18 +134,6 @@ fun CameraScreen(controller: MentraExampleController) {
             state.activeAction == "Capture & upload" ||
                 state.activeAction == "Capture scan photo" -> captureMode = CameraCaptureMode.PHOTO
         }
-    }
-    state.hotspotJoinPromptSsid?.let { ssid ->
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text("Connect to Glasses") },
-            text = { Text("When prompted, tap Connect to connect to \"$ssid\".") },
-            confirmButton = {
-                TextButton(onClick = controller::confirmHotspotJoin) {
-                    Text("OK")
-                }
-            },
-        )
     }
     Column(modifier = Modifier.fillMaxSize().background(AppColor.bg).verticalScroll(rememberScrollState())) {
         PageHeader("Camera")
@@ -195,7 +168,7 @@ fun CameraScreen(controller: MentraExampleController) {
                         Text(
                             if (!connected) {
                                 "Connect glasses first"
-                            } else if (!glassesWifiConnected && !glassesStorageEnabled) {
+                            } else if (!glassesWifiConnected) {
                                 "Connect glasses to Wi-Fi"
                             } else if (state.activeAction == "Capture & upload" || state.activeAction == "Capture scan photo") {
                                 "Capturing..."
@@ -208,10 +181,7 @@ fun CameraScreen(controller: MentraExampleController) {
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold
                         )
-                        if (
-                            state.photoPreviewUrl != null ||
-                            state.photoPreviewDetails?.state in setOf("error", "acknowledged", "saved")
-                        ) {
+                        if (state.photoPreviewUrl != null || state.photoPreviewDetails?.state == "error" || state.photoPreviewDetails?.state == "acknowledged") {
                             Text(
                                 photoStateLabel(state.photoPreviewUrl, state.photoPreviewDetails),
                                 color = AppColor.greenAccent,
@@ -234,31 +204,6 @@ fun CameraScreen(controller: MentraExampleController) {
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
-                    } else if (waitingForGlassesPreview) {
-                        Column(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.18f))
-                                    .border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(Icons.Filled.Check, null, tint = Color.White, modifier = Modifier.size(22.dp))
-                            }
-                            Text("Photo saved on glasses", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
-                            Text(
-                                "Downloading the saved photo preview.",
-                                color = Color.White.copy(alpha = 0.82f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(top = 3.dp),
-                            )
-                        }
                     } else {
                         Box(modifier = Modifier.align(Alignment.TopEnd).offset(x = (-50).dp, y = 30.dp).size(80.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.55f)))
                         Row(modifier = Modifier.align(Alignment.BottomStart).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -278,15 +223,12 @@ fun CameraScreen(controller: MentraExampleController) {
                         Text("ready", color = Color.White.copy(alpha = 0.85f), fontSize = 10.sp, fontWeight = FontWeight.Medium, modifier = Modifier.align(Alignment.BottomEnd).padding(14.dp))
                     }
                 }
-                if (needsGlassesHotspotSetup) {
-                    SavedPhotoHotspotPanel(controller)
-                }
                 Spacer(Modifier.height(14.dp))
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp)
                         .clip(RoundedCornerShape(18.dp))
                         .background(Brush.verticalGradient(listOf(Color(0xFF26473A), Color(0xFF1F3A2A))))
-                        .clickable(enabled = photoControlsEnabled) { controller.captureAndUpload() }
+                        .clickable(enabled = connected && glassesWifiConnected) { controller.captureAndUpload() }
                         .padding(vertical = 16.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -295,10 +237,8 @@ fun CameraScreen(controller: MentraExampleController) {
                         Text(
                             if (!connected) {
                                 "Connect glasses first"
-                            } else if (!glassesWifiConnected && !glassesStorageEnabled) {
+                            } else if (!glassesWifiConnected) {
                                 "Connect glasses to Wi-Fi"
-                            } else if (needsGlassesHotspotSetup) {
-                                if (state.galleryServerReachable == null) "Preparing hotspot..." else "Connect glasses hotspot"
                             } else if (state.activeAction == "Capture & upload" || state.activeAction == "Capture scan photo") {
                                 "Capturing..."
                             } else if (state.scanMode) {
@@ -473,9 +413,7 @@ fun CameraScreen(controller: MentraExampleController) {
                         } else {
                             when {
                             state.photoPreviewUrl != null && directPhone -> "Photo preview loaded from phone receiver"
-                            state.photoPreviewUrl != null && glassesStorageEnabled -> "Photo preview downloaded from glasses"
                             state.photoPreviewUrl != null -> "Photo preview loaded from cloud server"
-                            glassesStorageEnabled -> "Photo will be saved on glasses"
                             directPhone && state.phonePhotoServerRunning -> "Phone receiver ready"
                             directPhone -> "Phone receiver starts on capture"
                             else -> "Waiting for media upload"
@@ -496,7 +434,7 @@ fun CameraScreen(controller: MentraExampleController) {
             padding = PaddingValues(horizontal = 18.dp, vertical = 16.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Eyebrow(if (videoMode) "UPLOAD TO" else "PHOTO DESTINATION")
+                Eyebrow("UPLOAD TO")
                 if (videoMode || cloudServerEnabled) {
                     Text(
                         "test webhook",
@@ -542,19 +480,10 @@ fun CameraScreen(controller: MentraExampleController) {
                 }
                 Spacer(Modifier.height(12.dp))
             } else {
-                PhotoDestinationToggle(
-                    label = "Use media cloud server",
+                CloudServerToggle(
                     enabled = cloudServerEnabled,
                     onEnabledChange = { enabled ->
                         controller.setPhotoDestination(if (enabled) PhotoDestination.MACBOOK_SERVER else PhotoDestination.THIS_PHONE)
-                    },
-                )
-                Spacer(Modifier.height(12.dp))
-                PhotoDestinationToggle(
-                    label = "Save and preview from glasses",
-                    enabled = glassesStorageEnabled,
-                    onEnabledChange = { enabled ->
-                        controller.setPhotoDestination(if (enabled) PhotoDestination.GLASSES_STORAGE else PhotoDestination.THIS_PHONE)
                     },
                 )
                 Spacer(Modifier.height(12.dp))
@@ -588,15 +517,6 @@ fun CameraScreen(controller: MentraExampleController) {
                             }
                         )
                     }
-                    Spacer(Modifier.height(12.dp))
-                } else if (glassesStorageEnabled) {
-                    Text(
-                        "Photos stay on the glasses. Capture unlocks when the gallery connection is ready.",
-                        color = AppColor.muted,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                     Spacer(Modifier.height(12.dp))
                 } else {
                     Row(
@@ -655,74 +575,6 @@ fun CameraScreen(controller: MentraExampleController) {
         }
 
         Spacer(Modifier.height(scrollBottomPadding()))
-    }
-}
-
-@Composable
-private fun SavedPhotoHotspotPanel(controller: MentraExampleController) {
-    val state = controller.state
-    val statusColor = when (state.galleryServerReachable) {
-        true -> AppColor.greenAccent
-        false -> AppColor.red
-        null -> AppColor.muted
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 6.dp, vertical = 10.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(AppColor.ink.copy(alpha = 0.04f))
-            .border(1.dp, AppColor.ink.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 12.dp, vertical = 11.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text("Glasses hotspot", color = AppColor.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text(
-                    "Join ${galleryHotspotSsidLabel(state.glassesStatus)}",
-                    color = AppColor.muted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    "Password ${galleryHotspotPasswordLabel(state.glassesStatus)}",
-                    color = AppColor.muted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                SavedPhotoActionChip("Retry", controller::prepareGlassesPhotoPreview)
-                SavedPhotoActionChip("Wi-Fi settings", controller::openWifiSettings)
-                SavedPhotoActionChip("Copy password", controller::copyGalleryHotspotPassword)
-            }
-        }
-        Text(
-            state.galleryServerStatus,
-            color = statusColor,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-        )
-    }
-}
-
-@Composable
-private fun SavedPhotoActionChip(label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(AppColor.greenAccent.copy(alpha = 0.14f))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 7.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(label, color = AppColor.greenDeep, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -1133,7 +985,6 @@ private fun photoStateLabel(previewUrl: String?, details: PhotoPreviewDetails?):
     when {
         previewUrl != null -> "PREVIEW READY"
         details?.state == "error" -> "ERROR"
-        details?.state == "saved" -> "SAVED"
         details?.state == "acknowledged" -> "ACKNOWLEDGED"
         else -> "READY"
     }
@@ -1227,11 +1078,7 @@ private fun photoDetailsSummary(details: PhotoPreviewDetails?): String {
         details.source,
         details.byteCount?.let(::formatBytes),
         if (details.width != null && details.height != null) "${details.width} x ${details.height}" else null,
-        when (details.state) {
-            "acknowledged" -> "acknowledged"
-            "saved" -> "saved on glasses"
-            else -> "preview ready"
-        },
+        if (details.state == "acknowledged") "acknowledged" else "preview ready",
     ).joinToString(" · ")
 }
 
@@ -1269,9 +1116,8 @@ private fun photoDetailsRows(details: PhotoPreviewDetails?): List<Pair<String, S
     if (details == null) return listOf("Status" to "No photo metadata received yet")
     return buildList {
         add("Source" to details.source)
-        add("State" to if (details.state == "saved") "saved on glasses" else details.state)
+        add("State" to details.state)
         details.requestId?.let { add("Request ID" to it) }
-        details.fileName?.let { add("Glasses filename" to it) }
         details.byteCount?.let { add("Size" to formatBytes(it)) }
         if (details.width != null && details.height != null) add("Dimensions" to "${details.width} x ${details.height}")
         details.contentType?.let { add("Content type" to it) }
@@ -1381,11 +1227,7 @@ private fun FixedMediaServerRow() {
 }
 
 @Composable
-private fun PhotoDestinationToggle(
-    label: String,
-    enabled: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
-) {
+private fun CloudServerToggle(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1397,7 +1239,7 @@ private fun PhotoDestinationToggle(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            label,
+            "Use media cloud server",
             color = AppColor.ink,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
