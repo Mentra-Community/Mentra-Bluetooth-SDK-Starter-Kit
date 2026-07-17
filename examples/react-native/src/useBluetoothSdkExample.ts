@@ -917,8 +917,12 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       postOtaCheckInProgressRef.current = false;
       postOtaCheckedSessionRef.current = null;
       setLatestVersionInfoSignature(null);
-      // A stale in-progress OTA status (e.g. the BES step's final
-      // 'step_complete' before the reboot) must not gate the next check.
+      // A stale in-progress OTA status must not gate the next check. Since
+      // SDK 0.1.21 a BES-final pass on session-aware glasses ends with a
+      // terminal 'complete' before the reboot, but glasses that never
+      // report OTA session state (e.g. April-era ASG client 36 — the very
+      // firmware the OTA flow rescues) still end on 'step_complete', so
+      // keep clearing here.
       otaStatusRef.current = null;
       otaStartingAppIdentityRef.current = null;
       otaStartInFlightRef.current = false;
