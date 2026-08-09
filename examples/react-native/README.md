@@ -33,11 +33,15 @@ resolve the same local package.
 
 ## Run On iOS
 
+For the Dartboard LiveKit Ticket 1 demo, this copy is patched to publish
+directly from the glasses to LiveKit WHIP. Do not run `bun run ios:setup`;
+that script only installs GStreamer for the removed phone-local video receiver.
+
 ```bash
 cd examples/react-native
-bun run ios:setup
+bun install
 bunx expo prebuild
-bunx expo run:ios
+bunx expo run:ios --device
 ```
 
 Run on a physical iPhone for Bluetooth testing. Simulators are useful only for UI and compile checks.
@@ -46,15 +50,9 @@ The React Native example uses the SDK photo receiver plus local native modules f
 
 - `@mentra/react-native-barcode-scanner` scans the latest photo preview for barcodes.
 - `@mentra/bluetooth-sdk/photo-receiver` starts a small phone-local photo upload server for direct JPEG uploads.
-- `@mentra/react-native-video-stream-receiver` starts the phone-local WebRTC preview receiver.
 
-Only the video stream receiver needs GStreamer. On iOS, `bun run ios:setup` downloads the GStreamer package from `gstreamer.freedesktop.org`, verifies the published SHA-256 checksum, and installs it to `~/Library/Developer/GStreamer/iPhone.sdk`. Rerun this setup command after a fresh clone or whenever the local GStreamer SDK is missing from the default location.
-
-If your GStreamer SDK is installed somewhere else, set `GSTREAMER_ROOT_IOS` before prebuild or run:
-
-```bash
-GSTREAMER_ROOT_IOS=/path/to/iPhone.sdk bunx expo run:ios
-```
+This Dartboard LiveKit copy removes the phone-local WebRTC preview receiver, so
+GStreamer is not needed. Watch the stream in the LiveKit expert viewer instead.
 
 ## Run On Android
 
@@ -144,7 +142,7 @@ The example has five tabs:
 
 - **Device**: scan for Mentra Live glasses, connect, disconnect, reconnect to the saved/default device, inspect battery, firmware, Wi-Fi, RSSI, and discovered-device state, and explicitly check/start OTA updates once the glasses are connected to Wi-Fi.
 - **Camera**: request photo upload to the local demo cloud or directly to this phone, choose automatic or BLE-only photo transfer, record and upload videos to the media webhook, tune manual exposure and ISO, enable **Text Capture Mode** for glasses-side max-resolution capture and text-region cropping, preview received media, or separately scan standard photo previews for barcodes. Text capture and barcode scanning are mutually exclusive; enabling either turns the other off. Direct phone photo is provided by the SDK, while barcode scanning is implemented in a companion local native module.
-- **Stream**: start RTMP, SRT, or WebRTC streams with SDK-managed keep-alives and preview HLS/WebRTC output. Android and iOS can receive WebRTC directly on the phone through the app-hosted GStreamer WHIP receiver.
+- **Stream**: start RTMP, SRT, or WebRTC streams with SDK-managed keep-alives. This Dartboard LiveKit copy defaults WebRTC/WHIP to the Ticket 0 LiveKit ingress and uses the external expert viewer for video.
 - **System**: scan/connect/forget Wi-Fi, toggle hotspot, change gallery mode, receive microphone PCM, and send RGB LED controls.
 - **Console**: watch button, touch, swipe, BLE, TX, STORE, hotspot, stream, photo, video upload, microphone, and SDK diagnostic events.
 

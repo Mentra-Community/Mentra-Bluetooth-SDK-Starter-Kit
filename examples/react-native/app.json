@@ -1,17 +1,22 @@
 {
   "expo": {
     "name": "Mentra SDK RN",
-    "slug": "mentra-sdk-rn-example",
+    "slug": "dartboard-remote-assist",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "experiments": {
+      "reactCompiler": false
+    },
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.mentra.bluetoothsdk.example.reactnative",
+      "buildNumber": "5",
+      "bundleIdentifier": "ai.dartboard.mentra.remoteassist",
       "entitlements": {
         "com.apple.developer.networking.HotspotConfiguration": true,
         "com.apple.developer.networking.wifi-info": true
@@ -21,11 +26,12 @@
         "NSBluetoothPeripheralUsageDescription": "This example app uses Bluetooth to connect to smart glasses.",
         "NSCameraUsageDescription": "This example app can trigger camera capture on connected smart glasses.",
         "NSLocalNetworkUsageDescription": "This example app can talk to local media upload and streaming preview servers.",
-        "NSMicrophoneUsageDescription": "This example app can stream microphone audio from connected smart glasses."
+        "NSMicrophoneUsageDescription": "This example app can stream microphone audio from connected smart glasses.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.mentra.bluetoothsdk.example.reactnative",
+      "package": "ai.dartboard.mentra.remoteassist",
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "android.permission.BLUETOOTH",
@@ -38,7 +44,10 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.INTERNET",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
     "plugins": [
@@ -79,6 +88,12 @@
       ],
       "expo-video",
       "react-native-wifi-reborn"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "cddb1363-cb46-4cff-a105-da840372b129"
+      }
+    },
+    "owner": "dartboard"
   }
 }

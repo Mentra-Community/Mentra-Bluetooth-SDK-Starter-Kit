@@ -44,11 +44,6 @@ import MentraPhotoReceiver, {
   type PhotoReceiverStatusEvent,
   type PhotoReceiverUploadEvent,
 } from '@mentra/bluetooth-sdk/photo-receiver';
-import MentraVideoStreamReceiver, {
-  type VideoStreamFrameEvent,
-  type VideoStreamFirstFrameEvent,
-  type VideoStreamReceiverStatusEvent,
-} from '@mentra/react-native-video-stream-receiver';
 import {
   galleryHotspotPasswordLabel,
   galleryHotspotSsidLabel,
@@ -291,6 +286,8 @@ export type PhotoTuningFlag = 'unset' | 'on' | 'off';
 export const SCAN_MODELS = [DeviceModels.MentraLive, DeviceModels.G2] as const;
 export type ScanModel = (typeof SCAN_MODELS)[number];
 type StreamStartRequest = {
+  authToken?: string;
+  sound?: boolean;
   streamId: string;
   streamUrl: string;
   type: 'start_stream';
@@ -322,6 +319,12 @@ export const PHOTO_TUNING_FLAG_OPTIONS: PhotoTuningFlag[] = ['unset', 'on', 'off
 export const STREAM_MIN_FPS = 1;
 export const STREAM_MAX_FPS = 24;
 export const STREAM_DEFAULT_FPS = 15;
+export const DARTBOARD_LIVEKIT_WHIP_URL =
+  'https://dartboard-remote-assist-ebrni28b.whip.livekit.cloud/w/S44rtk7EiCD9';
+export const DARTBOARD_LIVEKIT_ROOM_URL =
+  'wss://dartboard-remote-assist-ebrni28b.livekit.cloud';
+export const DARTBOARD_RETURN_AUDIO_TOKEN =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiVGVjaG5pY2lhbiBBdWRpbyBCcmlkZ2UiLCJ2aWRlbyI6eyJyb29tSm9pbiI6dHJ1ZSwicm9vbSI6ImRhcnRib2FyZC1kZW1vIiwiY2FuUHVibGlzaCI6ZmFsc2UsImNhblN1YnNjcmliZSI6dHJ1ZSwiY2FuUHVibGlzaERhdGEiOmZhbHNlfSwic3ViIjoidGVjaG5pY2lhbi1hdWRpby1icmlkZ2UiLCJpc3MiOiJBUEl3RzI3UjZrZU5Kd1AiLCJuYmYiOjE3ODYyNDA0NTIsImV4cCI6MTc4Njg0NTI1Mn0.727j2hCZhm3D6q0Cqht_bKci85ei4Y2qiG05T73MN_M';
 export const PHOTO_EXPOSURE_MIN_NS = 1_000_000;
 export const PHOTO_EXPOSURE_MAX_NS = 33_333_333;
 export const PHOTO_EXPOSURE_DEFAULT_NS = 8_333_333;
@@ -343,7 +346,7 @@ export const CAMERA_ROI_POSITIONS = [
 export const STREAM_DEFAULT_URLS: Record<StreamProtocol, string> = {
   rtmp: 'rtmp://<computer-ip>:1935/live/mentra-live',
   srt: 'srt://<computer-ip>:8890?streamid=publish:mentra-live',
-  webrtc: 'http://<computer-ip>:8889/mentra-live/whip',
+  webrtc: DARTBOARD_LIVEKIT_WHIP_URL,
 };
 
 export const PHOTO_UPLOAD_DEFAULT_URL = 'http://<computer-ip>:8787/upload';
@@ -442,6 +445,7 @@ export type BluetoothSdkExampleState = {
   cameraSettingsApplying: boolean;
   cameraSettingsStatus: string;
   rawJsonExpanded: boolean;
+  returnAudioStatus: string;
   scanActive: boolean;
   selectedDiscoveredDevice: Device | null;
   selectedScanModel: ScanModel;
@@ -509,6 +513,7 @@ export type BluetoothSdkExampleActions = {
   setCameraRoiPosition: (roiPosition: CameraRoiPosition) => void;
   applyCameraSettings: () => Promise<void>;
   setRawJsonExpanded: (expanded: boolean) => void;
+  setReturnAudioPlaybackActive: (active: boolean, detail?: string) => Promise<void>;
   setStreamCloudServerEnabled: (enabled: boolean) => Promise<void>;
   setStreamFps: (fps: number) => void;
   setStreamUrl: (url: string) => void;
@@ -536,7 +541,6 @@ export const PHOTO_BLE_FALLBACK_TRANSFER_MESSAGE =
   'Photo is transferred over Bluetooth, which takes longer than Wi-Fi.';
 const PHOTO_BLE_FALLBACK_COMPRESSION_MESSAGE =
   'Preparing the photo for Bluetooth transfer.';
-const DIRECT_WEBRTC_RECEIVER_WARMUP_MS = 1000;
 const BARCODE_SCAN_VISIBLE_TIMEOUT_MS = 2_500;
 const ANDROID_12_API_LEVEL = 31;
 const MIC_SAMPLE_RATE = 16000;
@@ -555,6 +559,7 @@ const defaultDeviceStorage: DefaultDeviceStorage = {
 declare const process: {
   env?: {
     EXPO_PUBLIC_MENTRA_PHOTO_WEBHOOK_URL?: string;
+    EXPO_PUBLIC_MENTRA_STREAM_AUTH_TOKEN?: string;
     EXPO_PUBLIC_MENTRA_STREAM_URL?: string;
   };
 };
@@ -622,7 +627,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
   const [cameraSettingsApplying, setCameraSettingsApplying] = useState(false);
   const cameraSettingsApplyingRef = useRef(false);
   const [cameraSettingsStatus, setCameraSettingsStatus] = useState('Camera settings: default');
-  const [streamCloudServerEnabled, setStreamCloudServerEnabledState] = useState(false);
+  const [streamCloudServerEnabled, setStreamCloudServerEnabledState] = useState(true);
   const [directStreamReceiverRunning, setDirectStreamReceiverRunning] = useState(false);
   const [directStreamWhipUrl, setDirectStreamWhipUrl] = useState<string | null>(null);
   const [streamProtocol, setStreamProtocol] =
@@ -637,7 +642,10 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
   const [streamPreviewReady, setStreamPreviewReady] = useState(false);
   const [streamResolvedConfig, setStreamResolvedConfig] =
     useState<StreamResolvedConfig | null>(null);
-  const [streamStatus, setStreamStatus] = useState('Ready to stream WebRTC to phone');
+  const [streamStatus, setStreamStatus] = useState('Ready to stream LiveKit WHIP');
+  const [returnAudioStatus, setReturnAudioStatus] = useState(
+    'Return audio: waiting for expert mic',
+  );
   const [micRecording, setMicRecording] = useState(false);
   const [micPlaying, setMicPlaying] = useState(false);
   const [micElapsedSeconds, setMicElapsedSeconds] = useState(0);
@@ -688,7 +696,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
   const barcodeScanningEnabledRef = useRef(false);
   const textModeRef = useRef(false);
   const cameraWarmUpFailureLoggedRef = useRef(false);
-  const streamCloudServerEnabledRef = useRef(false);
+  const streamCloudServerEnabledRef = useRef(true);
   const activeTabRef = useRef<ExampleTabKey>('device');
   const galleryModeEnabledRef = useRef(false);
   const captureAndUploadRef = useRef<() => Promise<void>>(async () => undefined);
@@ -711,6 +719,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
   const micPlayerRef = useRef<AudioPlayer | null>(null);
   const micPlayerSubscriptionRef = useRef<{remove: () => void} | null>(null);
   const micPlayingRef = useRef(false);
+  const returnAudioPlayingRef = useRef(false);
   const micRecordingRef = useRef(false);
   const micStartedAtRef = useRef<number | null>(null);
   const didAutoConnectDefaultRef = useRef(false);
@@ -797,15 +806,6 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       }
       if (!process.env?.EXPO_PUBLIC_MENTRA_PHOTO_WEBHOOK_URL && typeof persisted.webhookUrl === 'string') {
         setWebhookUrlState(persisted.webhookUrl);
-      }
-      const streamUrlOverride = process.env?.EXPO_PUBLIC_MENTRA_STREAM_URL;
-      if (!streamUrlOverride && persisted.streamProtocol) {
-        setStreamProtocol(persisted.streamProtocol);
-      }
-      if (!streamUrlOverride && typeof persisted.streamUrl === 'string') {
-        setStreamUrlState(persisted.streamUrl);
-      } else if (!streamUrlOverride && persisted.streamProtocol) {
-        setStreamUrlState(STREAM_DEFAULT_URLS[persisted.streamProtocol]);
       }
     }).catch((error) => {
       addEvent('LIVE', `cloud URL restore failed: ${formatError(error)}`);
@@ -999,9 +999,6 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       }),
       MentraPhotoReceiver.addListener('photoUpload', handleDirectPhotoUpload),
       MentraPhotoReceiver.addListener('receiverStatus', handlePhotoReceiverStatus),
-      MentraVideoStreamReceiver.addListener('receiverStatus', handleVideoStreamReceiverStatus),
-      MentraVideoStreamReceiver.addListener('streamFrame', handleDirectStreamFrame),
-      MentraVideoStreamReceiver.addListener('streamFirstFrame', handleDirectStreamFirstFrame),
       BluetoothSdk.addListener('photo_status', handlePhotoStatus),
       BluetoothSdk.addListener('video_recording_status', handleVideoRecordingStatus),
       BluetoothSdk.addListener('media_success', handleMediaUpload),
@@ -1079,7 +1076,6 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       stopPreviewHealthPoll();
       stopDirectStreamFrameWatchdog();
       void stopPhonePhotoReceiver().catch(() => undefined);
-      void MentraVideoStreamReceiver.stopWebRtcReceiver().catch(() => undefined);
       activeStreamIdRef.current = null;
       activeVideoRequestIdRef.current = null;
       videoRecordingRef.current = false;
@@ -1094,6 +1090,10 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       }
       stopMicElapsedTimer();
       stopMicPlaybackSync();
+      if (returnAudioPlayingRef.current) {
+        returnAudioPlayingRef.current = false;
+        void BluetoothSdk.setOwnAppAudioPlaying(false).catch(() => undefined);
+      }
     };
   }, []);
 
@@ -1176,6 +1176,31 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
 
   function addEvent(tag: SdkConsoleEvent['tag'], text: string) {
     setEvents((current) => [event(tag, text), ...current].slice(0, 30));
+  }
+
+  async function setReturnAudioPlaybackActive(active: boolean, detail?: string) {
+    const status = detail
+      ? `Return audio: ${detail}`
+      : active
+        ? 'Return audio: playing expert mic'
+        : 'Return audio: waiting for expert mic';
+    setReturnAudioStatus(status);
+
+    if (returnAudioPlayingRef.current === active) {
+      return;
+    }
+
+    returnAudioPlayingRef.current = active;
+    try {
+      if (active) {
+        await BluetoothSdk.setOwnAppAudioPlaying(true);
+      } else if (!micPlayingRef.current) {
+        await BluetoothSdk.setOwnAppAudioPlaying(false);
+      }
+      addEvent('LIVE', status);
+    } catch (error) {
+      addEvent('TX', `return audio route update failed: ${formatError(error)}`);
+    }
   }
 
   function handleButtonPress(payload: ButtonPressEvent) {
@@ -2357,48 +2382,6 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     addEvent('LIVE', `video uploaded ${payload.mediaUrl}`);
   }
 
-  function handleVideoStreamReceiverStatus(payload: VideoStreamReceiverStatusEvent) {
-    if (payload.kind === 'stream') {
-      if (payload.message.toLowerCase().includes('ready at')) {
-        setDirectStreamReceiverRunning(true);
-      }
-      if (payload.message.toLowerCase().includes('stopped')) {
-        setDirectStreamReceiverRunning(false);
-        stopDirectStreamFrameWatchdog();
-      }
-      if (payload.message.startsWith('Rendered ')) {
-        markDirectStreamFrameReceived();
-      }
-    }
-    addEvent('LIVE', `${payload.kind} receiver ${payload.message}`);
-  }
-
-  function handleDirectStreamFirstFrame(_payload: VideoStreamFirstFrameEvent) {
-    markDirectStreamFrameReceived();
-  }
-
-  function handleDirectStreamFrame(_payload: VideoStreamFrameEvent) {
-    markDirectStreamFrameReceived();
-  }
-
-  function markDirectStreamFrameReceived() {
-    if (!activeStreamIdRef.current || streamCloudServerEnabledRef.current) {
-      return;
-    }
-    setStreamPreviewReady(true);
-    setStreamStartedAt((current) => current ?? Date.now());
-    setStreamStatus('WebRTC phone preview ready');
-    stopDirectStreamFrameWatchdog();
-    directStreamFrameStaleTimerRef.current = setTimeout(() => {
-      if (!activeStreamIdRef.current || streamCloudServerEnabledRef.current) {
-        return;
-      }
-      setStreamPreviewReady(false);
-      setStreamStatus('WebRTC preview stalled: no video frames received from glasses');
-      addEvent('TX', 'WebRTC preview stalled');
-    }, 7000);
-  }
-
   function handlePhotoResponse(response: PhotoSuccessResponseEvent) {
     const activeRequestId = activePhotoRequestIdRef.current;
     if (activeRequestId && response.requestId !== activeRequestId) {
@@ -3131,16 +3114,16 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       if (streamRequested || streamStartedAt !== null) {
         await stopActiveStream('Stream stopped because destination changed');
       }
-      streamCloudServerEnabledRef.current = enabled;
-      setStreamCloudServerEnabledState(enabled);
+      streamCloudServerEnabledRef.current = true;
+      setStreamCloudServerEnabledState(true);
       setStreamPreviewReady(false);
       setStreamResolvedConfig(null);
-      if (enabled) {
-        setStreamStatus('Ready to stream to a cloud server');
-        return;
-      }
       setStreamProtocol('webrtc');
-      setStreamStatus('Ready to stream WebRTC to phone');
+      setStreamStatus(
+        enabled
+          ? 'Ready to stream LiveKit WHIP'
+          : 'Phone preview receiver is disabled in this LiveKit demo build',
+      );
     });
   }
 
@@ -3196,7 +3179,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
           await startCloudStream();
           return;
         }
-        await startPhoneWebRtcStream();
+        throw new Error('Phone WebRTC receiver is disabled in this LiveKit demo build.');
       } finally {
         setStreamStartPendingValue(false);
       }
@@ -3210,21 +3193,22 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       setStreamStatus(validationMessage);
       throw new Error(validationMessage);
     }
-    if (streamProtocol === 'rtmp' || streamProtocol === 'srt' || streamProtocol === 'webrtc') {
+    if (streamProtocol === 'rtmp' || streamProtocol === 'srt') {
       setStreamStatus(`Checking local ${streamProtocol.toUpperCase()} server`);
       const reachabilityMessage =
         streamProtocol === 'rtmp'
           ? await localRtmpReachabilityMessage(url)
-          : streamProtocol === 'srt'
-            ? await localSrtReachabilityMessage(url)
-            : await localWebrtcReachabilityMessage(url);
+          : await localSrtReachabilityMessage(url);
       if (reachabilityMessage) {
         setStreamStatus(reachabilityMessage);
         throw new Error(reachabilityMessage);
       }
     }
     const streamId = `rn-${Date.now()}`;
+    const authToken = streamAuthTokenForUrl(url, streamProtocol);
     const params = {
+      ...(authToken ? {authToken} : {}),
+      sound: true,
       streamId,
       streamUrl: url,
       type: 'start_stream',
@@ -3235,38 +3219,17 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     activeStreamIdRef.current = streamId;
     setStreamRequested(true);
     setStreamPreviewReady(false);
+    if (isLiveKitWhipUrl(url)) {
+      setStreamStartedAt((current) => current ?? Date.now());
+      setStreamStatus('LiveKit WHIP start sent; watch the expert viewer');
+      return;
+    }
     setStreamStatus(`Starting ${streamProtocol.toUpperCase()} stream; waiting for preview`);
     void startPreviewReadinessPoll(url, streamProtocol, streamId);
   }
 
   async function startPhoneWebRtcStream() {
-    const receiver = await MentraVideoStreamReceiver.startWebRtcReceiver();
-    setDirectStreamReceiverRunning(true);
-    setDirectStreamWhipUrl(receiver.streamUrl);
-    setStreamPreviewReady(false);
-    setStreamStatus('Phone WebRTC receiver ready; starting glasses stream');
-    await delay(DIRECT_WEBRTC_RECEIVER_WARMUP_MS);
-
-    const streamId = `rn-${Date.now()}`;
-    const params = {
-      streamId,
-      streamUrl: receiver.streamUrl,
-      type: 'start_stream',
-      video: {fps: streamFps},
-    } satisfies StreamStartRequest;
-    try {
-      const status = await BluetoothSdk.startStream(params);
-      addEvent('LIVE', `stream ${status.status}`);
-      activeStreamIdRef.current = streamId;
-      setStreamRequested(true);
-      setStreamPreviewReady(false);
-      setStreamStatus('Starting WebRTC stream to phone; waiting for preview');
-    } catch (error) {
-      await MentraVideoStreamReceiver.stopWebRtcReceiver().catch(() => undefined);
-      setDirectStreamReceiverRunning(false);
-      setDirectStreamWhipUrl(null);
-      throw error;
-    }
+    throw new Error('Phone WebRTC receiver is disabled in this LiveKit demo build.');
   }
 
   async function stopActiveStream(status: string) {
@@ -3278,7 +3241,6 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       const status = await BluetoothSdk.stopStream();
       addEvent('LIVE', `stream ${status.status}`);
     }
-    await MentraVideoStreamReceiver.stopWebRtcReceiver().catch(() => undefined);
     setDirectStreamReceiverRunning(false);
     setDirectStreamWhipUrl(null);
     setStreamRequested(false);
@@ -3842,7 +3804,6 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     stopPreviewHealthPoll();
     stopDirectStreamFrameWatchdog();
     clearPhotoUploadTimeout();
-    void MentraVideoStreamReceiver.stopWebRtcReceiver().catch(() => undefined);
     activeStreamIdRef.current = null;
     setStreamStartPendingValue(false);
     const disconnectedPhotoRequestId = activePhotoRequestIdRef.current;
@@ -3978,7 +3939,6 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       stopDirectStreamFrameWatchdog();
       activeStreamIdRef.current = null;
       setStreamStartPendingValue(false);
-      void MentraVideoStreamReceiver.stopWebRtcReceiver().catch(() => undefined);
       setDirectStreamReceiverRunning(false);
       setDirectStreamWhipUrl(null);
       setStreamRequested(false);
@@ -4092,6 +4052,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     playMicRecording,
     rawJsonExpanded,
     requestWifiScan,
+    returnAudioStatus,
     scanActive,
     selectDiscoveredDevice,
     selectLedColor,
@@ -4122,6 +4083,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     setCameraFov: setCameraFovAction,
     setCameraRoiPosition: setCameraRoiPositionAction,
     setRawJsonExpanded,
+    setReturnAudioPlaybackActive,
     setStreamCloudServerEnabled: setStreamCloudServerEnabledAction,
     setStreamFps: setStreamFpsAction,
     setStreamUrl: setStreamUrlAction,
@@ -4465,6 +4427,19 @@ async function localWebrtcReachabilityMessage(whipUrlText: string) {
   }
 
   return localHttpPreviewReachabilityMessage(previewUrl, localWebrtcSetupMessage);
+}
+
+function streamAuthTokenForUrl(_streamUrl: string, _protocol: StreamProtocol) {
+  return process.env?.EXPO_PUBLIC_MENTRA_STREAM_AUTH_TOKEN;
+}
+
+function isLiveKitWhipUrl(streamUrl: string) {
+  try {
+    const url = new URL(streamUrl);
+    return url.hostname.endsWith('.whip.livekit.cloud');
+  } catch {
+    return false;
+  }
 }
 
 async function localRtmpReachabilityMessage(rtmpUrlText: string) {

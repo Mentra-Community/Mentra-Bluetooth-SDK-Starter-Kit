@@ -4,13 +4,14 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polyline, Rect } from 'react-native-svg';
 import WebView from 'react-native-webview';
-import { MentraVideoStreamReceiverView } from '@mentra/react-native-video-stream-receiver';
 import { Header } from '../components/Header';
 import { useScrollBottomPadding } from '../components/keyboardLayout';
 import { OfflineNotice } from '../components/OfflineNotice';
 import { colors } from '../components/theme';
 import { isGlassesConnected, isGlassesWifiConnected, streamUptime } from '../sdkFormat';
 import {
+  DARTBOARD_LIVEKIT_ROOM_URL,
+  DARTBOARD_RETURN_AUDIO_TOKEN,
   STREAM_DEFAULT_URLS,
   STREAM_MAX_FPS,
   STREAM_MIN_FPS,
@@ -23,19 +24,13 @@ import {
 const bars = [18, 32, 48, 24, 40, 56, 30, 44, 22, 36, 50, 28, 40];
 function streamSdkCall(useCloudServer: boolean, fps: number) {
   if (!useCloudServer) {
-    return `const receiver = await MentraVideoStreamReceiver.startWebRtcReceiver();
-const streamId = \`rn-\${Date.now()}\`;
-const started = await BluetoothSdk.startStream({
-  type: 'start_stream',
-  streamId,
-  streamUrl: receiver.streamUrl,
-  video: { fps: ${fps} },
-});
-console.log('Stream started', started.status)`;
+    return 'Phone WebRTC receiver disabled for this LiveKit demo build.';
   }
   return `const streamId = \`rn-\${Date.now()}\`;
 const started = await BluetoothSdk.startStream({
   type: 'start_stream',
+  authToken,
+  sound: true,
   streamId,
   streamUrl,
   video: { fps: ${fps} },
@@ -99,8 +94,6 @@ export function StreamScreen({ sdk }: { sdk: BluetoothSdkExampleModel }) {
           <View style={styles.preview}>
             {previewTarget ? (
               <LiveStreamPreview target={previewTarget} />
-            ) : !sdk.streamCloudServerEnabled && previewReady ? (
-              <MentraVideoStreamReceiverView style={styles.previewFill} />
             ) : (
               <PlaceholderStreamPreview
                 message={previewPending ? streamPreviewWaitingMessage(sdk.streamStatus) : undefined}
@@ -173,6 +166,8 @@ export function StreamScreen({ sdk }: { sdk: BluetoothSdkExampleModel }) {
         onToggle={() => setResolvedConfigExpanded((expanded) => !expanded)}
       />
 
+      <ReturnAudioBridge connected={connected} sdk={sdk} />
+
       {/* Protocol */}
       <LinearGradient colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.5)']} style={styles.protocolCard}>
         <View style={styles.cardHead}>
@@ -181,6 +176,7 @@ export function StreamScreen({ sdk }: { sdk: BluetoothSdkExampleModel }) {
         <View style={styles.cloudToggleRow}>
           <Text style={styles.cloudToggleLabel}>Use cloud server</Text>
           <Switch
+            disabled
             ios_backgroundColor="rgba(15,42,29,0.18)"
             onValueChange={sdk.setStreamCloudServerEnabled}
             thumbColor="#fff"
@@ -236,6 +232,138 @@ export function StreamScreen({ sdk }: { sdk: BluetoothSdkExampleModel }) {
       </LinearGradient>
     </ScrollView>
   );
+}
+
+function ReturnAudioBridge({
+  connected,
+  sdk,
+}: {
+  connected: boolean;
+  sdk: BluetoothSdkExampleModel;
+}) {
+  const source = React.useMemo(
+    () => ({
+      html: returnAudioBridgeHtml(DARTBOARD_LIVEKIT_ROOM_URL, DARTBOARD_RETURN_AUDIO_TOKEN),
+    }),
+    [],
+  );
+
+  React.useEffect(() => {
+    if (!connected) {
+      void sdk.setReturnAudioPlaybackActive(false, 'waiting for glasses');
+    }
+  }, [connected, sdk]);
+
+  const handleMessage = React.useCallback(
+    (event: {nativeEvent: {data: string}}) => {
+      let payload: {type?: string; message?: string} | null = null;
+      try {
+        payload = JSON.parse(event.nativeEvent.data);
+      } catch {
+        payload = {type: 'return-audio-status', message: event.nativeEvent.data};
+      }
+      const message = payload?.message ?? 'waiting for expert mic';
+      if (payload?.type === 'audio-playing') {
+        void sdk.setReturnAudioPlaybackActive(true, message);
+      } else if (payload?.type === 'audio-ended' || payload?.type === 'audio-error') {
+        void sdk.setReturnAudioPlaybackActive(false, message);
+      } else if (payload?.type === 'connected' || payload?.type === 'waiting') {
+        void sdk.setReturnAudioPlaybackActive(false, message);
+      }
+    },
+    [sdk],
+  );
+
+  return (
+    <LinearGradient colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.5)']} style={styles.returnAudioCard}>
+      <Text style={styles.eyebrow}>RETURN AUDIO</Text>
+      <Text style={styles.returnAudioTitle}>{sdk.returnAudioStatus}</Text>
+      <Text style={styles.returnAudioSub}>Expert browser mic routes through the selected iPhone audio output.</Text>
+      {connected ? (
+        <WebView
+          allowsInlineMediaPlayback
+          domStorageEnabled
+          javaScriptEnabled
+          mediaPlaybackRequiresUserAction={false}
+          onMessage={handleMessage}
+          originWhitelist={['*']}
+          source={source}
+          style={styles.returnAudioWebView}
+        />
+      ) : null}
+    </LinearGradient>
+  );
+}
+
+function returnAudioBridgeHtml(serverUrl: string, token: string) {
+  return `<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+  <script>
+    const serverUrl = ${JSON.stringify(serverUrl)};
+    const token = ${JSON.stringify(token)};
+    const targetIdentity = 'remote-expert';
+    let audioElement = null;
+
+    function post(type, message) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({type, message}));
+    }
+
+    async function playAttachedAudio(track, participant) {
+      if (!participant || participant.identity !== targetIdentity) {
+        return;
+      }
+      if (track.kind !== LivekitClient.Track.Kind.Audio) {
+        return;
+      }
+      if (audioElement) {
+        audioElement.remove();
+      }
+      audioElement = track.attach();
+      audioElement.autoplay = true;
+      audioElement.controls = false;
+      audioElement.muted = false;
+      audioElement.playsInline = true;
+      document.body.appendChild(audioElement);
+      try {
+        await audioElement.play();
+        post('audio-playing', 'playing expert mic');
+      } catch (error) {
+        post('audio-error', error && error.message ? error.message : String(error));
+      }
+    }
+
+    async function connect() {
+      try {
+        const room = new LivekitClient.Room({adaptiveStream: false});
+        const {RoomEvent} = LivekitClient;
+        room
+          .on(RoomEvent.Connected, () => post('connected', 'connected; waiting for expert mic'))
+          .on(RoomEvent.Disconnected, () => post('audio-ended', 'disconnected'))
+          .on(RoomEvent.TrackSubscribed, (track, _publication, participant) => playAttachedAudio(track, participant))
+          .on(RoomEvent.TrackUnsubscribed, () => post('audio-ended', 'expert mic unsubscribed'));
+        await room.connect(serverUrl, token);
+        post('connected', 'connected; waiting for expert mic');
+        room.remoteParticipants.forEach((participant) => {
+          participant.trackPublications.forEach((publication) => {
+            if (publication.track) {
+              playAttachedAudio(publication.track, participant);
+            }
+          });
+        });
+      } catch (error) {
+        post('audio-error', error && error.message ? error.message : String(error));
+      }
+    }
+
+    connect();
+  </script>
+</body>
+</html>`;
 }
 
 function ResolvedStreamConfigCard({
@@ -630,6 +758,10 @@ const styles = StyleSheet.create({
   resolvedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 5, gap: 12 },
   resolvedLabel: { color: colors.muted, fontSize: 11, fontWeight: '600' },
   resolvedValue: { color: colors.ink, fontSize: 12, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
+  returnAudioCard: { marginHorizontal: 16, marginTop: 12, borderRadius: 18, paddingVertical: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.borderSoft },
+  returnAudioTitle: { color: colors.ink, fontSize: 12, fontWeight: '700', marginTop: 4 },
+  returnAudioSub: { color: colors.muted, fontSize: 11, fontWeight: '500', marginTop: 4, lineHeight: 15 },
+  returnAudioWebView: { width: 1, height: 1, opacity: 0 },
 
   protocolCard: { marginHorizontal: 16, marginTop: 12, borderRadius: 22, paddingVertical: 14, paddingHorizontal: 14, gap: 12, borderWidth: 1, borderColor: colors.borderSoft },
   eyebrow: { color: colors.muted, fontSize: 10, fontWeight: '600', letterSpacing: 1.2 },
