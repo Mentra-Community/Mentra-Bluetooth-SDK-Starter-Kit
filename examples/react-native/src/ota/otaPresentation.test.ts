@@ -4,6 +4,7 @@ import type {MentraLiveOtaState} from '@mentra/engine/ota';
 import {otaPresentation} from './otaPresentation';
 
 const baseState: MentraLiveOtaState = {
+  batteryLevel: 80,
   canDiscard: false,
   canDismiss: false,
   canFinish: false,
@@ -11,6 +12,7 @@ const baseState: MentraLiveOtaState = {
   canOpenWifiSetup: false,
   canRetry: false,
   connected: true,
+  completedUpdate: false,
   continueDisabled: false,
   currentStep: null,
   error: null,

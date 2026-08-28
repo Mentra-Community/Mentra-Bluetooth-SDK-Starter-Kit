@@ -112,6 +112,13 @@ export function otaPresentation(
         title: `Checking ${deviceName}`,
         tone: 'active',
       };
+    case 'finishing':
+      return {
+        indeterminate: true,
+        message: 'Checking whether any additional update steps are required.',
+        title: 'Finishing update',
+        tone: 'active',
+      };
     case 'update_available':
       return {
         detail: transportDetail(state),
@@ -128,6 +135,21 @@ export function otaPresentation(
           : undefined,
         title: state.versionChange ? 'Version change required' : 'Update available',
         tone: 'active',
+        versionLabel: updateVersionLabel(releaseTransition),
+      };
+    case 'battery_required':
+      return {
+        message: `Charge ${deviceName} to at least 25% before updating. Current battery: ${state.batteryLevel ?? 'unknown'}%.`,
+        primary: {
+          action: 'install',
+          disabled: true,
+          label: 'Update now',
+        },
+        secondary: state.canDismiss
+          ? {action: 'finish', label: 'Later'}
+          : undefined,
+        title: 'Battery level too low',
+        tone: 'neutral',
         versionLabel: updateVersionLabel(releaseTransition),
       };
     case 'wifi_required':
