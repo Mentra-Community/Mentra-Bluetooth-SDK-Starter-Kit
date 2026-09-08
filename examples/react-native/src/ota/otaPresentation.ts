@@ -3,6 +3,12 @@ import type {
   MentraLiveOtaState,
 } from '@mentra/engine/ota';
 
+// Staging SDKs predate this screen; keep the example compatible with both
+// release channels while retaining exhaustive checks for future SDK screens.
+export type CustomOtaState = Omit<MentraLiveOtaState, 'screen'> & {
+  screen: MentraLiveOtaState['screen'] | 'unofficial_client';
+};
+
 export type CustomOtaAction = Exclude<
   keyof MentraLiveOtaController,
   'state'
@@ -42,7 +48,7 @@ function completedVersionLabel(transition: MentraLiveOtaState['releaseTransition
 }
 
 export function otaPresentation(
-  state: MentraLiveOtaState,
+  state: CustomOtaState,
   deviceName = 'Mentra Live',
 ): CustomOtaPresentation {
   const {changelogs, releaseTransition} = state;
@@ -154,6 +160,13 @@ export function otaPresentation(
         message: 'This mobile app is a development build, so automatic glasses updates are disabled.',
         primary: {action: 'finish', label: 'Continue'},
         title: 'Development Build',
+        tone: 'neutral',
+      };
+    case 'unofficial_client':
+      return {
+        message: 'Your glasses are running custom software. Automatic updates are disabled to preserve it.',
+        primary: {action: 'finish', label: 'Continue'},
+        title: 'Custom Glasses Software',
         tone: 'neutral',
       };
     case 'check_failed':
