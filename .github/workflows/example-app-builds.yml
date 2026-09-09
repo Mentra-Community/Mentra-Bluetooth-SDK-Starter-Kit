@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Test coordinated release scripts
-        run: node --test .github/scripts/coordinated-example-release.test.mjs
+        run: node --test .github/scripts/coordinated-example-release.test.mjs .github/scripts/react-native-acs-config.test.mjs .github/scripts/wait-for-example-validation.test.mjs .github/scripts/download-example-artifacts.test.mjs
 
   android:
     name: Native Android example
@@ -137,12 +137,9 @@ jobs:
         if: steps.availability.outputs.available == 'true'
         id: collect
         env:
-          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix }}
+          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix || steps.sdk-version.outputs.version }}
         run: |
           artifact_suffix="$ARTIFACT_SUFFIX"
-          if [[ -z "$artifact_suffix" && -f .github/coordinated-example-release.json ]]; then
-            artifact_suffix=$(jq -er .releaseIdentity .github/coordinated-example-release.json)
-          fi
           suffix="${artifact_suffix:+-$artifact_suffix}"
           output="mentra-example-android${suffix}.apk"
           cp examples/android/app/build/outputs/apk/debug/app-debug.apk "$output"
@@ -224,7 +221,7 @@ jobs:
         id: collect
         working-directory: examples/ios
         env:
-          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix }}
+          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix || steps.sdk-version.outputs.version }}
         run: |
           app_path=$(find build/Build/Products/Debug-iphoneos -maxdepth 1 -name '*.app' -print -quit)
           if [ -z "$app_path" ]; then
@@ -234,9 +231,6 @@ jobs:
           mkdir Payload
           cp -R "$app_path" Payload/
           artifact_suffix="$ARTIFACT_SUFFIX"
-          if [[ -z "$artifact_suffix" && -f ../../.github/coordinated-example-release.json ]]; then
-            artifact_suffix=$(jq -er .releaseIdentity ../../.github/coordinated-example-release.json)
-          fi
           suffix="${artifact_suffix:+-$artifact_suffix}"
           output="mentra-example-ios${suffix}-unsigned.ipa"
           zip -qry "$output" Payload
@@ -248,6 +242,66 @@ jobs:
           name: mentra-example-ios
           path: ${{ steps.collect.outputs.path }}
           if-no-files-found: error
+
+  macos:
+    name: Native macOS example
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build AppKit app
+        working-directory: examples/macos
+        run: bash run.sh --build-only
+
+  react-native-macos:
+    name: React Native macOS example
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      RCT_NO_LAUNCH_PACKAGER: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Install dependencies
+        working-directory: examples/react-native-macos
+        run: bun install --frozen-lockfile
+
+      - name: Type check TypeScript
+        working-directory: examples/react-native-macos
+        run: bun run typecheck
+
+      - name: Install CocoaPods dependencies
+        working-directory: examples/react-native-macos/macos
+        run: pod install
+
+      - name: Build native app and bundle JavaScript
+        working-directory: examples/react-native-macos/macos
+        run: |
+          xcodebuild \
+            -workspace mentra-bluetooth-sdk-macos-example.xcworkspace \
+            -scheme mentra-bluetooth-sdk-macos-example-macOS \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Verify embedded JavaScript bundle
+        working-directory: examples/react-native-macos/macos
+        run: test -s build/Build/Products/Release/mentra-bluetooth-sdk-macos-example.app/Contents/Resources/main.jsbundle
 
   react-native:
     name: React Native example
@@ -261,9 +315,9 @@ jobs:
       - name: Read Bluetooth SDK version
         id: sdk-version
         run: |
-          version=$(jq -r '.dependencies["@mentra/bluetooth-sdk"]' examples/react-native/package.json | sed 's/^[^0-9]*//')
-          if [ -z "$version" ] || [ "$version" = "null" ]; then
-            echo "Could not read @mentra/bluetooth-sdk version from package.json" >&2
+          version=$(jq -er '.dependencies["@mentra/bluetooth-sdk"]' examples/react-native/package.json)
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "The example requires an exact @mentra/bluetooth-sdk version, got: $version" >&2
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -342,12 +396,9 @@ jobs:
       - name: Collect APK
         id: collect
         env:
-          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix }}
+          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix || steps.sdk-version.outputs.version }}
         run: |
           artifact_suffix="$ARTIFACT_SUFFIX"
-          if [[ -z "$artifact_suffix" && -f .github/coordinated-example-release.json ]]; then
-            artifact_suffix=$(jq -er .releaseIdentity .github/coordinated-example-release.json)
-          fi
           suffix="${artifact_suffix:+-$artifact_suffix}"
           output="mentra-example-react-native${suffix}.apk"
           cp examples/react-native/android/app/build/outputs/apk/release/app-release.apk "$output"
@@ -372,9 +423,9 @@ jobs:
       - name: Read Bluetooth SDK version
         id: sdk-version
         run: |
-          version=$(jq -r '.dependencies["@mentra/bluetooth-sdk"]' examples/react-native-elevenlabs-audio/package.json | sed 's/^[^0-9]*//')
-          if [ -z "$version" ] || [ "$version" = "null" ]; then
-            echo "Could not read @mentra/bluetooth-sdk version from package.json" >&2
+          version=$(jq -er '.dependencies["@mentra/bluetooth-sdk"]' examples/react-native-elevenlabs-audio/package.json)
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "The example requires an exact @mentra/bluetooth-sdk version, got: $version" >&2
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -444,12 +495,9 @@ jobs:
       - name: Collect APK
         id: collect
         env:
-          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix }}
+          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix || steps.sdk-version.outputs.version }}
         run: |
           artifact_suffix="$ARTIFACT_SUFFIX"
-          if [[ -z "$artifact_suffix" && -f .github/coordinated-example-release.json ]]; then
-            artifact_suffix=$(jq -er .releaseIdentity .github/coordinated-example-release.json)
-          fi
           suffix="${artifact_suffix:+-$artifact_suffix}"
           output="mentra-example-rn-elevenlabs-audio${suffix}.apk"
           cp examples/react-native-elevenlabs-audio/android/app/build/outputs/apk/release/app-release.apk "$output"

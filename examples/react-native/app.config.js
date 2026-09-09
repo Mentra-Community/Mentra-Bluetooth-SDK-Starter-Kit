@@ -1,24 +1,23 @@
-// Expo reads app.json first and passes it here as `config`.
-//
-// The committed iOS bundle identifier is registered to Mentra's Apple
-// Developer team, and Apple App IDs are globally unique. Automatic signing
-// for a physical-device build therefore fails for any other team. Set
-// MENTRA_IOS_BUNDLE_ID to your own reverse-DNS identifier before prebuild:
-//
-//   MENTRA_IOS_BUNDLE_ID=com.yourname.mentrasdkrn bunx expo prebuild --clean --platform ios
-//
-// Leaving the variable unset keeps the committed identifier so Mentra's
-// TestFlight and CI builds are unaffected.
-module.exports = ({ config }) => {
-  const bundleIdentifier = (process.env.MENTRA_IOS_BUNDLE_ID || "").trim();
-  if (!bundleIdentifier) {
-    return config;
+const {createRequire} = require('node:module')
+
+module.exports = ({config}) => {
+  // Set a team-owned identifier before prebuild when signing outside Mentra.
+  // Leaving this unset preserves the committed TestFlight and CI identifier.
+  const bundleIdentifier = (process.env.MENTRA_IOS_BUNDLE_ID || '').trim()
+  if (bundleIdentifier) {
+    config = {...config, ios: {...config.ios, bundleIdentifier}}
   }
+
+  const engineManifest = require.resolve('@mentra/engine/package.json')
+  const engineRequire = createRequire(engineManifest)
+  const engine = engineRequire(engineManifest)
+
+  // Older release families do not include ACS. When Engine owns it, resolve
+  // its plugin from that same dependency tree, including non-hoisted installs.
+  if (!engine.dependencies?.['@mentra/acs-meeting']) return config
+
   return {
     ...config,
-    ios: {
-      ...config.ios,
-      bundleIdentifier,
-    },
-  };
-};
+    plugins: [...(config.plugins ?? []), engineRequire.resolve('@mentra/acs-meeting/app.plugin.js')],
+  }
+}

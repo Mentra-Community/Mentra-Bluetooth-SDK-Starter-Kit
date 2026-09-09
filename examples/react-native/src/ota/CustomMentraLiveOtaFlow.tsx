@@ -67,6 +67,57 @@ export function CustomMentraLiveOtaFlow({
     controller[action]();
   };
 
+  const content = (
+    <>
+      <StatusIcon
+        accent={palette.accent}
+        tone={presentation.tone}
+        wash={palette.wash}
+      />
+      <Text style={styles.title}>{presentation.title}</Text>
+      {presentation.message ? (
+        <Text style={styles.message}>{presentation.message}</Text>
+      ) : null}
+
+      {presentation.versionLabel ? (
+        <View style={styles.versionBadge}>
+          <Text selectable style={styles.versionLabel}>
+            {presentation.versionLabel}
+          </Text>
+        </View>
+      ) : null}
+
+      {presentation.progress !== undefined ? (
+        <View style={styles.progressBlock}>
+          <Text style={[styles.progressValue, { color: palette.accent }]}>
+            {Math.round(presentation.progress)}%
+          </Text>
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  backgroundColor: palette.accent,
+                  width: `${Math.min(Math.max(presentation.progress, 0), 100)}%`,
+                },
+              ]}
+            />
+          </View>
+        </View>
+      ) : null}
+
+      {presentation.indeterminate ? (
+        <ActivityIndicator color={palette.accent} size="large" />
+      ) : null}
+
+      {presentation.detail ? (
+        <Text style={styles.detail}>{presentation.detail}</Text>
+      ) : null}
+
+      <ChangelogList changelogs={presentation.changelogs} />
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header title="Software Update" />
@@ -76,55 +127,11 @@ export function CustomMentraLiveOtaFlow({
             styles.centerContent,
             hasChangelogs && styles.topContent,
           ]}
-          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
           style={styles.contentScroll}
+          testID="custom-ota-page-scroll"
         >
-          <StatusIcon
-            accent={palette.accent}
-            tone={presentation.tone}
-            wash={palette.wash}
-          />
-          <Text style={styles.title}>{presentation.title}</Text>
-          {presentation.message ? (
-            <Text style={styles.message}>{presentation.message}</Text>
-          ) : null}
-
-          {presentation.versionLabel ? (
-            <View style={styles.versionBadge}>
-              <Text selectable style={styles.versionLabel}>
-                {presentation.versionLabel}
-              </Text>
-            </View>
-          ) : null}
-
-          {presentation.progress !== undefined ? (
-            <View style={styles.progressBlock}>
-              <Text style={[styles.progressValue, { color: palette.accent }]}>
-                {Math.round(presentation.progress)}%
-              </Text>
-              <View style={styles.progressTrack}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      backgroundColor: palette.accent,
-                      width: `${Math.min(Math.max(presentation.progress, 0), 100)}%`,
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          ) : null}
-
-          {presentation.indeterminate ? (
-            <ActivityIndicator color={palette.accent} size="large" />
-          ) : null}
-
-          {presentation.detail ? (
-            <Text style={styles.detail}>{presentation.detail}</Text>
-          ) : null}
-
-          <ChangelogList changelogs={presentation.changelogs} />
+          {content}
         </ScrollView>
 
         {presentation.primary || presentation.secondary ? (
@@ -284,6 +291,7 @@ function ChangelogList({ changelogs }: { changelogs?: CustomOtaChangelog[] }) {
       <ScrollView
         contentContainerStyle={styles.changelogContent}
         nestedScrollEnabled
+        persistentScrollbar
         showsVerticalScrollIndicator
         style={styles.changelogList}
         testID="custom-ota-changelog-scroll"
@@ -393,7 +401,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 24,
   },
-  topContent: { justifyContent: "flex-start", paddingTop: 12 },
+  topContent: {
+    justifyContent: "flex-start",
+    paddingBottom: 16,
+    paddingTop: 12,
+  },
   iconTile: {
     alignItems: "center",
     borderRadius: 18,
@@ -461,16 +473,17 @@ const styles = StyleSheet.create({
     borderColor: colors.hairline,
     borderRadius: 16,
     borderWidth: 1,
-    flexShrink: 1,
+    flexGrow: 1,
     gap: 12,
-    maxHeight: 300,
     maxWidth: 420,
+    minHeight: 200,
     padding: 16,
     width: "100%",
   },
   changelogTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
-  changelogList: { flexShrink: 1, maxHeight: 232, width: "100%" },
-  changelogContent: { gap: 20, paddingBottom: 2 },
+  // Bound the notes themselves so the card can grow for its title, but not for all of the Markdown.
+  changelogList: { flexGrow: 1, height: 120, width: "100%" },
+  changelogContent: { gap: 20, paddingBottom: 4 },
   changelogEntry: { gap: 8 },
   changelogEntryDivider: {
     borderTopColor: colors.hairline,
