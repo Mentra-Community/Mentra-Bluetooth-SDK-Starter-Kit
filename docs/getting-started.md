@@ -222,12 +222,10 @@ to it, so the glasses link stops working in the background. A Swift package
 cannot declare background modes for your app. The native example declares it in
 `examples/ios/MentraExample-Info.plist`.
 
-An upcoming SDK release, tracked in Mentra-Community/MentraOS#4386, also
-reconnects in the background after the glasses drop the link, for example while
-their Bluetooth chip restarts during a software update, and logs a warning at
-startup when the mode is missing. The SDK version these examples pin,
-`3.2.1-dev.307`, does not include that yet. See
-[Background Operation](https://docs.mentraglass.com/bluetooth-sdk/ios#background-operation).
+For SDK behavior when reconnecting in the background after the glasses drop
+the link, for example while their Bluetooth chip restarts during a software
+update, see [Background Operation](https://docs.mentraglass.com/bluetooth-sdk/ios#background-operation)
+and Mentra-Community/MentraOS#4386. These examples pin beta SDK `3.2.1-beta.646`.
 
 ```xml
 <key>UIBackgroundModes</key>
