@@ -1,5 +1,11 @@
 # Getting Started
 
+For a native Mac app, use the [AppKit/SwiftPM example](../examples/macos/README.md)
+or [react-native-macos example](../examples/react-native-macos/README.md). Their
+macOS setup, sandbox permissions, and compatible native host versions are
+separate from the phone instructions below. An iOS app installed on an Apple
+silicon Mac through TestFlight still follows the iOS path.
+
 This guide shows how to add the Mentra Bluetooth SDK to Android, iOS, and React Native apps, then connect to Mentra Live and read glasses status.
 
 Use the latest SDK version published by Mentra. The example apps in this repo are designed to work from a fresh clone with the Maven, SwiftPM, and JavaScript packages, without any local MentraOS checkout.
@@ -210,7 +216,16 @@ iOS apps should include permission copy in `Info.plist`:
 
 ## Background Operation On iOS
 
-If your iOS app needs BLE to keep running while the phone is locked or the app is backgrounded, enable Core Bluetooth background mode:
+Declare Core Bluetooth background mode in your iOS app's `Info.plist`. Without
+it, iOS suspends your app when the phone locks and delivers no Bluetooth events
+to it, so the glasses link stops working in the background. A Swift package
+cannot declare background modes for your app. The native example declares it in
+`examples/ios/MentraExample-Info.plist`.
+
+For SDK behavior when reconnecting in the background after the glasses drop
+the link, for example while their Bluetooth chip restarts during a software
+update, see [Background Operation](https://docs.mentraglass.com/bluetooth-sdk/ios#background-operation)
+and Mentra-Community/MentraOS#4386. These examples pin production SDK `3.2.1`.
 
 ```xml
 <key>UIBackgroundModes</key>
