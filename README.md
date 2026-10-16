@@ -125,7 +125,8 @@ glasses’ built-in action; disabling it retains touch events for your app. Valu
 change only after a settings acknowledgement and reset when BLE disconnects.
 The controls are available for Mentra Live and require firmware with `cs_tpdef`.
 
-The examples pin SDK `3.4.0-dev.947`, which publishes
+The staging examples pin SDK `3.3.0-beta.955`, allocated by the staging release for
+MentraOS PR #4814, which publishes
 `setTouchGestureDefaultBehaviorEnabled` on npm, Maven Central and Swift Package
 Manager. Build with the published packages; local SDK overrides are optional.
 
