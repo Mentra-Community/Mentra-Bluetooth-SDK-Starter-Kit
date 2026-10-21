@@ -108,7 +108,7 @@ for screenshot provenance.
 
 Published package installs are the normal SDK path. Local overrides are only for SDK development before a release is published:
 
-Set `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` to a MentraOS checkout's `mobile/modules/bluetooth-sdk` to build the examples against that source:
+Set `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` to a MentraOS checkout's `mobile/modules/bluetooth-sdk` to build the examples against that source. Without the variable, a MentraOS checkout next to this repository (`../mentraos`, with its `mobile/` workspace) is used automatically. Set `MENTRA_BLUETOOTH_SDK_PUBLISHED=1` to force the published packages.
 
 - React Native: `bun install` replaces the installed `@mentra/*` packages (the SDK, `@mentra/engine`, and their siblings) with their sources from the checkout.
 - Android: the native example resolves `com.mentraglass:*` from Maven local at the checkout's version; publish those artifacts from the checkout first.

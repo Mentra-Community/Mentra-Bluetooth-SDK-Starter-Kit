@@ -18,7 +18,7 @@ config.options.paths = {
   'react-native/*': [path.join(__dirname, 'node_modules/react-native-macos/*')],
 };
 
-const sdkRoot = process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH;
+const sdkRoot = require('../../scripts/mentraos-sdk-path.cjs')();
 if (sdkRoot) {
   for (const entry of ['src/index.ts', 'src/react/index.ts']) {
     if (!fs.existsSync(path.resolve(sdkRoot, entry))) {

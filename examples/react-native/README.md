@@ -174,6 +174,10 @@ bunx expo run:ios
 bun run android:dev
 ```
 
+If this repository sits next to a MentraOS checkout (`../mentraos`), a plain
+`bun install` does the same without the variable; set
+`MENTRA_BLUETOOTH_SDK_PUBLISHED=1` to keep the published packages.
+
 With the variable set, `bun install` replaces each installed `@mentra/*` package
 that the MentraOS mobile workspace provides (the SDK, `@mentra/engine`, and their
 sibling packages) with a copy of its source, so Metro, TypeScript, Expo config

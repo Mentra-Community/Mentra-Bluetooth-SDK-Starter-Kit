@@ -85,6 +85,11 @@ cd /path/to/mentra-bluetooth-sdk-starter-kit/examples/android
 MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/path/to/MentraOS/mobile/modules/bluetooth-sdk ./gradlew installDebug
 ```
 
+A MentraOS checkout next to this repository (`../mentraos`) is used the same way
+without the variable; set `MENTRA_BLUETOOTH_SDK_PUBLISHED=1` to use Maven Central
+instead. If the checkout's version is not in Maven local, the build stops and
+prints the publish command.
+
 With `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` set, the example resolves
 `com.mentraglass:*` only from Maven local, at the version in the checkout's
 `package.json`, so it never falls back to a published artifact. To test other

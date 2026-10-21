@@ -18,10 +18,23 @@ val gstreamerArchRootFile = File(gstreamerRootFile, "share/gst-android/ndk-build
 val gstreamerSdkMarker = File(gstreamerArchRootFile, "share/gst-android/ndk-build/gstreamer-1.0.mk")
 val gstreamerGeneratedJavaDir = layout.buildDirectory.dir("generated/gstreamer/java").get().asFile
 
-// A MentraOS source checkout builds against the version in its package.json.
-val mentraSdkVersion = providers.environmentVariable("MENTRA_BLUETOOTH_SDK_PACKAGE_PATH").orNull
-    ?.takeIf { it.isNotBlank() }
+// A MentraOS source checkout (settings.gradle.kts) builds against the version in
+// its package.json, published to Maven local from that checkout.
+val mentraBluetoothSdkRoot = gradle.extra["mentraBluetoothSdkRoot"] as String?
+val mentraSdkVersion = mentraBluetoothSdkRoot
     ?.let { (groovy.json.JsonSlurper().parse(File(it, "package.json")) as Map<*, *>)["version"] }
+    ?.also { version ->
+        val mavenLocalRepo = System.getProperty("maven.repo.local") ?: "${System.getProperty("user.home")}/.m2/repository"
+        if (!File(mavenLocalRepo, "com/mentraglass/bluetooth-sdk/$version/bluetooth-sdk-$version.pom").isFile) {
+            throw GradleException(
+                "Building against MentraOS source at $mentraBluetoothSdkRoot, but " +
+                    "com.mentraglass:bluetooth-sdk:$version is not in Maven local. Publish it from MentraOS " +
+                    "(mobile/: bun install && bun expo prebuild --platform android; then in mobile/android: " +
+                    "./gradlew :lc3Lib:publishToMavenLocal :mentra-bluetooth-sdk:publishToMavenLocal -PmentraPublicSdk=true), " +
+                    "or set MENTRA_BLUETOOTH_SDK_PUBLISHED=1 to use the published SDK."
+            )
+        }
+    }
     ?: property("mentraSdkVersion")
 
 val installGStreamerAndroidSdk = tasks.register<Exec>("installGStreamerAndroidSdk") {

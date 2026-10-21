@@ -8,7 +8,8 @@ prepare_react_native_project!
 
 target 'mentra-bluetooth-sdk-macos-example-macOS' do
   platform :macos, '14.0'
-  sdk_path = ENV['MENTRA_BLUETOOTH_SDK_PACKAGE_PATH']
+  sdk_path = `node -p "require('#{File.join(__dir__, '../../../scripts/mentraos-sdk-path.cjs')}')() || ''"`.strip
+  sdk_path = nil if sdk_path.empty?
   search_paths = [sdk_path, '../node_modules'].compact
   use_expo_modules!({:searchPaths => search_paths})
   config_command = ['node', '../node_modules/expo-modules-autolinking/bin/expo-modules-autolinking', 'react-native-config', '--json', '--platform', 'ios']

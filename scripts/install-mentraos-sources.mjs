@@ -1,17 +1,23 @@
 #!/usr/bin/env node
-// Runs after `bun install` in the React Native examples. When
-// MENTRA_BLUETOOTH_SDK_PACKAGE_PATH points at a MentraOS checkout's
-// mobile/modules/bluetooth-sdk, replaces each installed @mentra/* package that
+// Runs after `bun install` in the React Native examples. When building against
+// a MentraOS checkout's mobile/modules/bluetooth-sdk (see mentraos-sdk-path.cjs),
+// replaces each installed @mentra/* package that
 // the checkout's mobile workspace provides with a copy of its source, so Metro,
 // TypeScript, config plugins, and native autolinking build that source while
 // resolving dependencies from this app exactly as for the published packages.
 // Install the MentraOS mobile workspace first (`bun install` in mobile/) so the
-// packages are built. Does nothing when the variable is unset.
+// packages are built. Does nothing when building against published packages.
 import fs from "node:fs"
 import path from "node:path"
 
-const sdkPath = process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH?.trim()
+import mentraosSdkPath from "./mentraos-sdk-path.cjs"
+
+const sdkPath = mentraosSdkPath()
 if (!sdkPath) process.exit(0)
+if (!fs.existsSync(path.join(sdkPath, "plugin/build"))) {
+  console.error(`${sdkPath} is not built: run \`bun install\` in its MentraOS mobile/ directory, or set MENTRA_BLUETOOTH_SDK_PUBLISHED=1.`)
+  process.exit(1)
+}
 
 const mobileRoot = path.resolve(sdkPath, "../..")
 const {workspaces} = JSON.parse(fs.readFileSync(path.join(mobileRoot, "package.json"), "utf8"))
@@ -25,7 +31,7 @@ for (const pattern of workspaces) {
     if (fs.existsSync(manifest)) sources.set(JSON.parse(fs.readFileSync(manifest, "utf8")).name, dir)
   }
 }
-sources.set("@mentra/bluetooth-sdk", path.resolve(sdkPath))
+sources.set("@mentra/bluetooth-sdk", sdkPath)
 
 // Skip installed dependencies and native build output (any path separator).
 const skip = (relative) => {

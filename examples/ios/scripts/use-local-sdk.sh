@@ -4,7 +4,8 @@
 # This edits the committed project; `git checkout MentraExample.xcodeproj` reverts it.
 set -euo pipefail
 
-sdk_path="${MENTRA_BLUETOOTH_SDK_PACKAGE_PATH:?Set MENTRA_BLUETOOTH_SDK_PACKAGE_PATH to MentraOS mobile/modules/bluetooth-sdk}"
+# Defaults to the MentraOS checkout next to this repository (../mentraos).
+sdk_path="${MENTRA_BLUETOOTH_SDK_PACKAGE_PATH:-$(dirname "$0")/../../../../mentraos/mobile/modules/bluetooth-sdk}"
 sdk_path="$(cd "$sdk_path" && pwd)"
 test -f "$sdk_path/Package.swift"
 

@@ -18,6 +18,7 @@ import fs from "node:fs"
 import path from "node:path"
 import {fileURLToPath} from "node:url"
 import {expoDeviceName, resolveAndroidPhoneTarget} from "./resolve-android-phone.mjs"
+import mentraosSdkPath from "../../../scripts/mentraos-sdk-path.cjs"
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(scriptDir, "..")
@@ -44,26 +45,8 @@ function resolveMentraOsSdkSibling() {
   return null
 }
 const mentraOsSdkSibling = resolveMentraOsSdkSibling()
-const localSdkOverride = process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH?.trim()
-  ? path.resolve(process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH)
-  : mentraOsSdkSibling &&
-      fs
-        .readFileSync(
-          path.join(
-            mentraOsSdkSibling,
-            "android/src/main/java/com/mentra/bluetoothsdk/BluetoothSdkModule.kt",
-          ),
-          "utf8",
-        )
-        .includes("setWifiAdbState")
-    ? mentraOsSdkSibling
-    : null
-if (localSdkOverride && !process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH?.trim()) {
-  process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH = localSdkOverride
-  console.log(
-    `Auto-using MentraOS Bluetooth SDK (includes setWifiAdbState): ${localSdkOverride}`,
-  )
-}
+// Same choice as the `bun install` step (env, MENTRA_BLUETOOTH_SDK_PUBLISHED, or ../mentraos).
+const localSdkOverride = mentraosSdkPath()
 
 const STUB_SHERPA_TRANSCRIBER = `package com.mentra.bluetoothsdk.stt
 
@@ -480,11 +463,13 @@ const sdkPackageJson = output("node", [
   "require.resolve('@mentra/bluetooth-sdk/package.json')",
 ]).trim()
 const sdkRoot = path.dirname(fs.realpathSync(sdkPackageJson))
-// With MENTRA_BLUETOOTH_SDK_PACKAGE_PATH set, `bun install` copied the MentraOS
+// When building from MentraOS source, `bun install` copied the MentraOS
 // sources into node_modules/@mentra (scripts/install-mentraos-sources.mjs).
 // Point the native build at that copy too, so JS and native use one root.
 if (localSdkOverride) {
   process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH = sdkRoot
+} else {
+  delete process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH
 }
 const sdkPackage = JSON.parse(fs.readFileSync(path.join(sdkRoot, "package.json"), "utf8"))
 console.log(`@mentra/bluetooth-sdk resolves to: ${sdkRoot} (version ${sdkPackage.version})`)

@@ -29,7 +29,8 @@ the project to that local Swift package:
 MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/path/to/MentraOS/mobile/modules/bluetooth-sdk scripts/use-local-sdk.sh
 ```
 
-The script edits `MentraExample.xcodeproj`; revert it with
+Without the variable, the script uses a MentraOS checkout next to this
+repository (`../mentraos`). The script edits `MentraExample.xcodeproj`; revert it with
 `git checkout MentraExample.xcodeproj` before committing.
 
 The camera FOV controls in this example use the new `setCameraFov` result:

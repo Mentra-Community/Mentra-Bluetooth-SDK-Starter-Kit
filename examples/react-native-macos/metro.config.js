@@ -1,8 +1,6 @@
 const path = require('path');
 const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
-const sdkRoot = process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH
-  ? path.resolve(process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH)
-  : undefined;
+const sdkRoot = require('../../scripts/mentraos-sdk-path.cjs')() ?? undefined;
 
 module.exports = mergeConfig(getDefaultConfig(__dirname), {
   watchFolders: sdkRoot ? [sdkRoot] : [],
