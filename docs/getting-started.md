@@ -144,8 +144,8 @@ bunx expo run:android
 The React Native starter example also includes `bun run android:dev`, which starts Metro first, forwards the device's `localhost:8081` over USB, installs the native app, and opens the Expo dev-client URL so the first launch does not land on the blank launcher screen.
 
 For unreleased React Native SDK development, build against a MentraOS checkout:
-install its mobile workspace, then set `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` before
-`bun install`. The install replaces the example's `@mentra/*` packages (the SDK,
+install its mobile workspace, then set `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` for
+`bun install` only. The install replaces the example's `@mentra/*` packages (the SDK,
 `@mentra/engine`, and their siblings) with copies of their sources, so Metro, Expo
 config plugins, and native autolinking all use that checkout. Run `bun install`
 again after changing the sources:
@@ -154,18 +154,16 @@ again after changing the sources:
 (cd /path/to/MentraOS/mobile && bun install)
 
 cd examples/react-native
-export MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/path/to/MentraOS/mobile/modules/bluetooth-sdk
-bun install
+MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/path/to/MentraOS/mobile/modules/bluetooth-sdk bun install
 bunx expo run:ios
 # or
 bun run android:dev
 ```
 
-To switch back to the published packages, unset the variable, remove the copied
-packages, reinstall, and regenerate the native projects:
+To switch back to the published packages, remove the copied packages, reinstall
+without the variable, and regenerate the native projects:
 
 ```bash
-unset MENTRA_BLUETOOTH_SDK_PACKAGE_PATH
 rm -rf node_modules/@mentra
 bun install
 bunx expo prebuild --clean

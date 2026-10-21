@@ -168,8 +168,7 @@ cd /path/to/MentraOS/mobile
 bun install  # installs and builds the SDK and its sibling @mentra packages
 
 cd /path/to/mentra-bluetooth-sdk-starter-kit/examples/react-native
-export MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/path/to/MentraOS/mobile/modules/bluetooth-sdk
-bun install
+MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/path/to/MentraOS/mobile/modules/bluetooth-sdk bun install
 bunx expo run:ios
 # or
 bun run android:dev
@@ -183,11 +182,14 @@ dependencies from this app, as with the published packages. The source versions
 can differ from the published versions in `package.json`. Run `bun install`
 again after changing the MentraOS sources.
 
-To go back to the published packages, unset the variable, reinstall, and
+Set the variable for `bun install` only. The SDK's config plugin also reads it
+when Gradle runs, and would then build the SDK's Android projects from the
+checkout instead of the installed copy. `bun run android` handles this for you.
+
+To go back to the published packages, reinstall without the variable and
 regenerate the native projects:
 
 ```bash
-unset MENTRA_BLUETOOTH_SDK_PACKAGE_PATH
 rm -rf node_modules/@mentra
 bun install
 bunx expo prebuild --clean

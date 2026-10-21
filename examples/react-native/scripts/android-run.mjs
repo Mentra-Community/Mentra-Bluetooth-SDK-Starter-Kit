@@ -475,19 +475,17 @@ removeStaleBluetoothSdkModuleEntry()
 console.log("Installing the package.json dependencies from npm...")
 run("bun", ["install"])
 
-// With MENTRA_BLUETOOTH_SDK_PACKAGE_PATH set, `bun install` copied the MentraOS
-// sources into node_modules/@mentra (scripts/install-mentraos-sources.mjs).
-if (localSdkOverride && !fs.existsSync(localSdkOverride)) {
-  throw new Error(`Local SDK override not found at ${localSdkOverride}`)
-}
-
 const sdkPackageJson = output("node", [
   "--print",
   "require.resolve('@mentra/bluetooth-sdk/package.json')",
 ]).trim()
-const sdkRoot = localSdkOverride
-  ? fs.realpathSync(localSdkOverride)
-  : path.dirname(fs.realpathSync(sdkPackageJson))
+const sdkRoot = path.dirname(fs.realpathSync(sdkPackageJson))
+// With MENTRA_BLUETOOTH_SDK_PACKAGE_PATH set, `bun install` copied the MentraOS
+// sources into node_modules/@mentra (scripts/install-mentraos-sources.mjs).
+// Point the native build at that copy too, so JS and native use one root.
+if (localSdkOverride) {
+  process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH = sdkRoot
+}
 const sdkPackage = JSON.parse(fs.readFileSync(path.join(sdkRoot, "package.json"), "utf8"))
 console.log(`@mentra/bluetooth-sdk resolves to: ${sdkRoot} (version ${sdkPackage.version})`)
 console.log(localSdkOverride ? "SDK source: MentraOS / local override" : "SDK source: npm dependency")

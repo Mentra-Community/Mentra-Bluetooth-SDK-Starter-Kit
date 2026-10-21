@@ -27,14 +27,18 @@ for (const pattern of workspaces) {
 }
 sources.set("@mentra/bluetooth-sdk", path.resolve(sdkPath))
 
-// Skip installed dependencies and local native build output.
-const skip = (file) => /(^|\/)(node_modules|\.gradle|\.cxx)$|\/android(\/[^/]+)?\/build$/.test(file)
+// Skip installed dependencies and native build output (any path separator).
+const skip = (relative) => {
+  const parts = relative.split(/[\\/]/)
+  const name = parts.at(-1)
+  return ["node_modules", ".gradle", ".cxx"].includes(name) || (name === "build" && parts.includes("android"))
+}
 
 const scope = path.resolve("node_modules/@mentra")
 for (const name of fs.readdirSync(scope)) {
   const source = sources.get(`@mentra/${name}`)
   if (!source) continue
   fs.rmSync(path.join(scope, name), {recursive: true, force: true})
-  fs.cpSync(source, path.join(scope, name), {recursive: true, filter: (file) => !skip(file)})
+  fs.cpSync(source, path.join(scope, name), {recursive: true, filter: (file) => !skip(path.relative(source, file))})
   console.log(`Installed @mentra/${name} from ${source}`)
 }
