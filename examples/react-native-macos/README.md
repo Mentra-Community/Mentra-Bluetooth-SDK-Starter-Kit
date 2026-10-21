@@ -40,8 +40,9 @@ RCT_METRO_PORT=8091 bun run macos --no-packager
 For SDK development, optionally set
 `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/absolute/path/to/MentraOS/mobile/modules/bluetooth-sdk`
 before installing pods, building, or starting Metro. Use the same value in all
-terminals. Unset it, reinstall pods, and restart Metro to return to the published
-package. Local overrides and Podfile.lock are not committed. `bun run typecheck`
+terminals. A MentraOS checkout next to this repository (`../mentraos`) is used
+without the variable. Set `MENTRA_BLUETOOTH_SDK_PUBLISHED=1`, reinstall pods, and
+restart Metro to return to the published package. Local overrides and Podfile.lock are not committed. `bun run typecheck`
 uses the source SDK when the override is set, or the installed npm exports otherwise;
 both modes use React Native macOS host types.
 

@@ -190,12 +190,13 @@ Set the variable for `bun install` only. The SDK's config plugin also reads it
 when Gradle runs, and would then build the SDK's Android projects from the
 checkout instead of the installed copy. `bun run android` handles this for you.
 
-To go back to the published packages, reinstall without the variable and
-regenerate the native projects:
+To go back to the published packages, reinstall with
+`MENTRA_BLUETOOTH_SDK_PUBLISHED=1` (leaving the variable unset is not enough
+next to a MentraOS checkout) and regenerate the native projects:
 
 ```bash
 rm -rf node_modules/@mentra
-bun install
+MENTRA_BLUETOOTH_SDK_PUBLISHED=1 bun install
 bunx expo prebuild --clean
 ```
 

@@ -160,18 +160,20 @@ bunx expo run:ios
 bun run android:dev
 ```
 
-To switch back to the published packages, remove the copied packages, reinstall
-without the variable, and regenerate the native projects:
+A MentraOS checkout next to this repository (`../mentraos`) is used without the
+variable. To switch back to the published packages, set
+`MENTRA_BLUETOOTH_SDK_PUBLISHED=1`, remove the copied packages, reinstall, and
+regenerate the native projects:
 
 ```bash
 rm -rf node_modules/@mentra
-bun install
+MENTRA_BLUETOOTH_SDK_PUBLISHED=1 bun install
 bunx expo prebuild --clean
 ```
 
-For the native Android example, unset `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` before
-building and omit `-PmentraUseMavenLocal=true` when you want Maven Central rather
-than local artifacts. For the native iOS example, revert
+For the native Android example, set `MENTRA_BLUETOOTH_SDK_PUBLISHED=1` and omit
+`-PmentraUseMavenLocal=true` when you want Maven Central rather than local
+artifacts. For the native iOS example, revert
 `MentraExample.xcodeproj` (`git checkout examples/ios/MentraExample.xcodeproj`)
 if you switched it to a local package.
 

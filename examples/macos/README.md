@@ -18,7 +18,9 @@ bash run.sh
 
 For SDK development, optionally set
 `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/absolute/path/to/MentraOS/mobile/modules/bluetooth-sdk`
-before building. Unset it to return to the published package.
+before building. A MentraOS checkout next to this repository (`../mentraos`) is
+used without the variable. Set `MENTRA_BLUETOOTH_SDK_PUBLISHED=1` to return to
+the published package.
 Use `bash run.sh --build-only` to build without launching.
 Quit this example before rebuilding; the script refuses to overwrite a running
 app instead of silently activating its previous binary.
