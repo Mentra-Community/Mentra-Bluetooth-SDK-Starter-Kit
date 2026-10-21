@@ -160,34 +160,38 @@ For production Expo apps that need BLE or microphone behavior while iOS is backg
 ## Local SDK Override
 
 Use this when developing SDK changes before the matching package release is
-published. Keep the committed dependency pinned to the published version so a
-clean checkout still works, then replace the installed package folder locally
-with your SDK source checkout.
+published. Keep the committed dependencies pinned to published versions so a
+clean checkout still works, and build against a MentraOS checkout instead:
 
 ```bash
-cd examples/react-native
-SDK_PATH="/path/to/MentraOS-dev/mobile/modules/bluetooth-sdk"
+cd /path/to/MentraOS/mobile
+bun install  # installs and builds the SDK and its sibling @mentra packages
 
-mkdir -p node_modules/@mentra
-rm -rf node_modules/@mentra/bluetooth-sdk
-ln -s "$SDK_PATH" node_modules/@mentra/bluetooth-sdk
-
-export MENTRA_BLUETOOTH_SDK_PACKAGE_PATH="$SDK_PATH"
+cd /path/to/mentra-bluetooth-sdk-starter-kit/examples/react-native
+export MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/path/to/MentraOS/mobile/modules/bluetooth-sdk
+bun install
 bunx expo run:ios
 # or
 bun run android:dev
 ```
 
-The symlink makes Expo native autolinking and prebuild consume the local SDK
-package. `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` makes Metro resolve JavaScript from
-that same source folder. The local source package can have a different version
-than the published dependency in `package.json`; the override is path-based.
+With the variable set, `bun install` replaces each installed `@mentra/*` package
+that the MentraOS mobile workspace provides (the SDK, `@mentra/engine`, and their
+sibling packages) with a copy of its source, so Metro, TypeScript, Expo config
+plugins, and native autolinking all build from that checkout while resolving
+dependencies from this app, as with the published packages. The source versions
+can differ from the published versions in `package.json`. Run `bun install`
+again after changing the MentraOS sources.
 
-Do not use `bun add --no-save` for this workflow. Because the local package is
-also named `@mentra/bluetooth-sdk`, Bun can report a dependency loop when it
-tries to resolve the override against the published dependency. If `bun install`
-restores `node_modules` from the lockfile, recreate the symlink. To go back to
-the published package, remove the symlink and run `bun install`.
+To go back to the published packages, unset the variable, reinstall, and
+regenerate the native projects:
+
+```bash
+unset MENTRA_BLUETOOTH_SDK_PACKAGE_PATH
+rm -rf node_modules/@mentra
+bun install
+bunx expo prebuild --clean
+```
 
 ## App Walkthrough
 

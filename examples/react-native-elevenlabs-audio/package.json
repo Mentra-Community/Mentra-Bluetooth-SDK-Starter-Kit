@@ -4,6 +4,7 @@
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
+    "postinstall": "node ../../scripts/install-mentraos-sources.mjs",
     "start": "expo start --dev-client --port 8082",
     "android": "expo run:android --port 8082",
     "android:dev": "node ./scripts/android-dev.mjs",

@@ -18,6 +18,12 @@ val gstreamerArchRootFile = File(gstreamerRootFile, "share/gst-android/ndk-build
 val gstreamerSdkMarker = File(gstreamerArchRootFile, "share/gst-android/ndk-build/gstreamer-1.0.mk")
 val gstreamerGeneratedJavaDir = layout.buildDirectory.dir("generated/gstreamer/java").get().asFile
 
+// A MentraOS source checkout builds against the version in its package.json.
+val mentraSdkVersion = providers.environmentVariable("MENTRA_BLUETOOTH_SDK_PACKAGE_PATH").orNull
+    ?.takeIf { it.isNotBlank() }
+    ?.let { (groovy.json.JsonSlurper().parse(File(it, "package.json")) as Map<*, *>)["version"] }
+    ?: property("mentraSdkVersion")
+
 val installGStreamerAndroidSdk = tasks.register<Exec>("installGStreamerAndroidSdk") {
     val setupScript = layout.projectDirectory.file("../scripts/setup-gstreamer-android.sh").asFile
     group = "setup"
@@ -96,11 +102,7 @@ kotlin {
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
     implementation(composeBom)
-    if (findProject(":mentra-bluetooth-sdk") != null) {
-        implementation(project(":mentra-bluetooth-sdk"))
-    } else {
-        implementation("com.mentraglass:bluetooth-sdk:${property("mentraSdkVersion")}")
-    }
+    implementation("com.mentraglass:bluetooth-sdk:$mentraSdkVersion")
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")

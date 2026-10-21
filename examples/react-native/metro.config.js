@@ -2,13 +2,13 @@ const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
 
 const projectRoot = __dirname;
-const sdkRoot = process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH
-  ? path.resolve(process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH)
-  : path.dirname(
-      require.resolve("@mentra/bluetooth-sdk/package.json", {
-        paths: [projectRoot],
-      }),
-    );
+// With MENTRA_BLUETOOTH_SDK_PACKAGE_PATH set, `bun install` has already put the
+// SDK source here (scripts/install-mentraos-sources.mjs).
+const sdkRoot = path.dirname(
+  require.resolve("@mentra/bluetooth-sdk/package.json", {
+    paths: [projectRoot],
+  }),
+);
 const sharedPackages = [
   "expo",
   "expo-modules-core",

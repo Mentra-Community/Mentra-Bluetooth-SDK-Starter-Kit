@@ -12,6 +12,7 @@
   },
   "//": "Use android:dev for local Android development: it starts Metro, installs the dev build, forwards port 8081, and opens the Expo dev-client URL to avoid the first-run blank launcher.",
   "scripts": {
+    "postinstall": "node ../../scripts/install-mentraos-sources.mjs",
     "start": "expo start --dev-client",
     "ios": "bun run ios:setup && expo run:ios",
     "ios:setup": "bash ./modules/mentra-video-stream-receiver/scripts/setup-gstreamer-ios.sh",

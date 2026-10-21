@@ -108,12 +108,12 @@ for screenshot provenance.
 
 Published package installs are the normal SDK path. Local overrides are only for SDK development before a release is published:
 
-- Android: publish `com.mentraglass:bluetooth-sdk` and its companion artifacts to Maven local, then build the example with `mavenLocal()` enabled.
-- iOS: point Xcode at a local Swift package checkout when testing unpublished Swift SDK source changes.
-- React Native: keep the published package pinned for clean checkouts, then
-  locally symlink `node_modules/@mentra/bluetooth-sdk` to an SDK source checkout
-  and set `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` so Metro and native builds resolve
-  the same package.
+Set `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` to a MentraOS checkout's `mobile/modules/bluetooth-sdk` to build the examples against that source:
+
+- React Native: `bun install` replaces the installed `@mentra/*` packages (the SDK, `@mentra/engine`, and their siblings) with their sources from the checkout.
+- Android: the native example resolves `com.mentraglass:*` from Maven local at the checkout's version; publish those artifacts from the checkout first.
+- iOS: `examples/ios/scripts/use-local-sdk.sh` switches the Xcode project to the local Swift package.
+- macOS: the Swift package and the React Native macOS Podfile read the variable directly.
 
 The example READMEs document each override explicitly. Do not bake machine-specific paths into committed app config.
 

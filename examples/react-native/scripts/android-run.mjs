@@ -359,24 +359,6 @@ repositories {
  * sherpa-onnx, and :lc3Lib/:silero must point at that same checkout. The RN
  * example's generated android/ tree is gitignored, so re-apply every run.
  */
-function ensureLocalSdkNodeModulesLink(sdkRoot) {
-  const scopeDir = path.join(projectRoot, "node_modules/@mentra")
-  const linkPath = path.join(scopeDir, "bluetooth-sdk")
-  const target = fs.realpathSync(sdkRoot)
-  fs.mkdirSync(scopeDir, {recursive: true})
-  try {
-    const existing = fs.lstatSync(linkPath)
-    if (existing.isSymbolicLink() && fs.realpathSync(linkPath) === target) {
-      return
-    }
-    fs.rmSync(linkPath, {recursive: true, force: true})
-  } catch {
-    // Missing link path is fine; create below.
-  }
-  fs.symlinkSync(target, linkPath, process.platform === "win32" ? "junction" : "dir")
-  console.log(`Linked node_modules/@mentra/bluetooth-sdk -> ${target}`)
-}
-
 function ensureMentraOsSdkGradleWiring(projectRoot, sdkRoot) {
   const buildGradlePath = path.join(projectRoot, "android/build.gradle")
   const settingsGradlePath = path.join(projectRoot, "android/settings.gradle")
@@ -493,13 +475,10 @@ removeStaleBluetoothSdkModuleEntry()
 console.log("Installing the package.json dependencies from npm...")
 run("bun", ["install"])
 
-if (localSdkOverride) {
-  if (!fs.existsSync(localSdkOverride)) {
-    throw new Error(`Local SDK override not found at ${localSdkOverride}`)
-  }
-  // Metro + Gradle both honor MENTRA_BLUETOOTH_SDK_PACKAGE_PATH; also link
-  // node_modules so native autolinking / require.resolve stay on the same tree.
-  ensureLocalSdkNodeModulesLink(localSdkOverride)
+// With MENTRA_BLUETOOTH_SDK_PACKAGE_PATH set, `bun install` copied the MentraOS
+// sources into node_modules/@mentra (scripts/install-mentraos-sources.mjs).
+if (localSdkOverride && !fs.existsSync(localSdkOverride)) {
+  throw new Error(`Local SDK override not found at ${localSdkOverride}`)
 }
 
 const sdkPackageJson = output("node", [

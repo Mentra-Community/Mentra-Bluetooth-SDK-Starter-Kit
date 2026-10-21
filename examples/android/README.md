@@ -69,31 +69,34 @@ export GSTREAMER_ROOT_ANDROID=/path/to/Android.sdk
 ## Local SDK Override
 
 Use this when developing SDK changes before the matching Maven release is
-published. This example branch uses the new camera FOV promise result, so prefer
-the source override when working from a local MentraOS checkout:
+published. The SDK's Android project builds inside the MentraOS app's Expo
+host, so publish it to Maven local from your MentraOS checkout first, the same
+way MentraOS publishes it to Maven Central, then point this example at the
+checkout:
 
 ```bash
+cd /path/to/MentraOS/mobile
+bun install
+bun expo prebuild --platform android
+cd android
+./gradlew :lc3Lib:publishToMavenLocal :mentra-bluetooth-sdk:publishToMavenLocal -PmentraPublicSdk=true
+
 cd /path/to/mentra-bluetooth-sdk-starter-kit/examples/android
 MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/path/to/MentraOS/mobile/modules/bluetooth-sdk ./gradlew installDebug
 ```
 
-The source override includes the SDK Android project directly, plus its `lc3Lib`
-and `silero` modules. The Camera tab disables FOV/ROI controls while
-`setCameraFov` is in flight, then re-enables them only after the glasses report
-that the hardware setting was applied or the SDK returns an error.
+With `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` set, the example resolves
+`com.mentraglass:*` only from Maven local, at the version in the checkout's
+`package.json`, so it never falls back to a published artifact. To test other
+Maven-local artifacts against `mentraSdkVersion` from `gradle.properties`, use
+`-PmentraUseMavenLocal=true` instead.
 
-If you need Maven-local validation instead:
+The Camera tab disables FOV/ROI controls while `setCameraFov` is in flight, then
+re-enables them only after the glasses report that the hardware setting was
+applied or the SDK returns an error.
 
-```bash
-cd /path/to/MentraOS/mobile/android
-./gradlew :lc3Lib:publishToMavenLocal :mentra-bluetooth-sdk:publishToMavenLocal
-
-cd /path/to/mentra-bluetooth-sdk-starter-kit/examples/android
-./gradlew installDebug -PmentraUseMavenLocal=true
-```
-
-`settings.gradle.kts` only includes `mavenLocal()` when explicitly requested,
-so the default command line path validates the published Maven Central
+`settings.gradle.kts` only includes `mavenLocal()` when one of these overrides is
+set, so the default command line path validates the published Maven Central
 artifacts instead of a stale local copy.
 
 ## App Walkthrough

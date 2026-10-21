@@ -52,11 +52,10 @@ If the error also lists a Push Notifications capability, that entitlement is not
 - Run `bunx expo prebuild` after adding the SDK plugin to `app.json`.
 - Confirm `@mentra/bluetooth-sdk` is installed in the app that is being prebuilt.
 - On iOS, rerun `bunx expo run:ios` after changing native module dependencies.
-- If you are testing a local SDK package, symlink
-  `node_modules/@mentra/bluetooth-sdk` to the local source checkout and set
-  `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` to that same path. The symlink is for Expo
-  native autolinking; the environment variable is for Metro JavaScript
-  resolution.
+- If you are testing a local SDK checkout, set `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH`
+  before `bun install` so the install copies the checkout's sources into
+  `node_modules/@mentra/*`, then rerun `bunx expo prebuild`. See the example README's
+  **Local SDK Override** section.
 
 ## Bluetooth Permission Problems
 
@@ -98,7 +97,7 @@ Fix:
 
 1. Upgrade to Mentra Bluetooth SDK `0.1.20` or newer, which includes BLE wire v2 and K900 endian negotiation.
 2. Update glasses firmware through the normal Mentra Live OTA path when available.
-3. If testing unreleased SDK source, symlink `mobile/modules/bluetooth-sdk` from MentraOS and rebuild the native app (see [Getting Started](getting-started.md) local override section).
+3. If testing unreleased SDK source, set `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` to MentraOS `mobile/modules/bluetooth-sdk`, rerun `bun install`, and rebuild the native app (see [Getting Started](getting-started.md) local override section).
 4. Power-cycle glasses and forget/re-pair after upgrading either side.
 
 No app-level framing changes are required; negotiation is internal to the SDK. See [Mentra Live BLE Wire Protocol Notes](mentra-live-ble-wire-protocol.md) for background.

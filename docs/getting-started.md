@@ -143,51 +143,39 @@ bunx expo run:android
 
 The React Native starter example also includes `bun run android:dev`, which starts Metro first, forwards the device's `localhost:8081` over USB, installs the native app, and opens the Expo dev-client URL so the first launch does not land on the blank launcher screen.
 
-For unreleased React Native SDK development, point the installed package folder
-at your local SDK checkout and set the same path for Metro. This works even
-when the local source package version does not match the published version in
-`package.json`, because Expo native autolinking reads the symlinked package
-folder directly.
+For unreleased React Native SDK development, build against a MentraOS checkout:
+install its mobile workspace, then set `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` before
+`bun install`. The install replaces the example's `@mentra/*` packages (the SDK,
+`@mentra/engine`, and their siblings) with copies of their sources, so Metro, Expo
+config plugins, and native autolinking all use that checkout. Run `bun install`
+again after changing the sources:
 
 ```bash
+(cd /path/to/MentraOS/mobile && bun install)
+
 cd examples/react-native
-SDK_PATH="/path/to/MentraOS-dev/mobile/modules/bluetooth-sdk"
-
-mkdir -p node_modules/@mentra
-rm -rf node_modules/@mentra/bluetooth-sdk
-ln -s "$SDK_PATH" node_modules/@mentra/bluetooth-sdk
-
-export MENTRA_BLUETOOTH_SDK_PACKAGE_PATH="$SDK_PATH"
+export MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/path/to/MentraOS/mobile/modules/bluetooth-sdk
+bun install
 bunx expo run:ios
 # or
 bun run android:dev
 ```
 
-Do not use `bun add --no-save` for this override. The local SDK package has the
-same package name as the published dependency, so Bun can treat the override as a
-self-dependency loop. If you run `bun install`, recreate the symlink before
-testing from source again. To return to the published package, remove the
-symlink and run `bun install`.
-
-To switch a React Native example back from local SDK source to the published
-package, unset the Metro override, remove the symlinked package folder, and
-install the published SDK version:
+To switch back to the published packages, unset the variable, remove the copied
+packages, reinstall, and regenerate the native projects:
 
 ```bash
-cd examples/react-native
-
 unset MENTRA_BLUETOOTH_SDK_PACKAGE_PATH
-rm -rf node_modules/@mentra/bluetooth-sdk
-
-bun add @mentra/bluetooth-sdk@0.1.20
+rm -rf node_modules/@mentra
 bun install
+bunx expo prebuild --clean
 ```
 
 For the native Android example, unset `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` before
 building and omit `-PmentraUseMavenLocal=true` when you want Maven Central rather
-than local artifacts. For the native iOS example, remove any local Swift package
-override in Xcode and resolve the remote `mentra-bluetooth-sdk-ios` package at
-the published version.
+than local artifacts. For the native iOS example, revert
+`MentraExample.xcodeproj` (`git checkout examples/ios/MentraExample.xcodeproj`)
+if you switched it to a local package.
 
 ## Permissions
 

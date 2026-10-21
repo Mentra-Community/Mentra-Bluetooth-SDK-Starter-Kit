@@ -22,12 +22,15 @@ https://github.com/Mentra-Community/mentra-bluetooth-sdk-ios.git
 
 Use Xcode's package dependency editor to update the version when a newer SDK is published.
 
-When validating unreleased SDK changes from a local MentraOS checkout, replace
-that package dependency with a local package pointing at:
+When validating unreleased SDK changes from a local MentraOS checkout, switch
+the project to that local Swift package:
 
-```text
-/path/to/MentraOS/mobile/modules/bluetooth-sdk
+```bash
+MENTRA_BLUETOOTH_SDK_PACKAGE_PATH=/path/to/MentraOS/mobile/modules/bluetooth-sdk scripts/use-local-sdk.sh
 ```
+
+The script edits `MentraExample.xcodeproj`; revert it with
+`git checkout MentraExample.xcodeproj` before committing.
 
 The camera FOV controls in this example use the new `setCameraFov` result:
 they disable repeated applies while the command is in flight, then re-enable

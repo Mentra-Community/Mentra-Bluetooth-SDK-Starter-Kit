@@ -25,6 +25,10 @@ bun run android:dev
 
 If multiple Android devices are connected, set `ANDROID_SERIAL`.
 
+To build against SDK source from a MentraOS checkout, set
+`MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` before `bun install`, as described in the
+React Native example's [Local SDK Override](../react-native/README.md#local-sdk-override).
+
 ## What It Sends
 
 - Glasses microphone PCM from `BluetoothSdk.addListener('mic_pcm', ...)`
