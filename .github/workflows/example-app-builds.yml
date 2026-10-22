@@ -1,23 +1,27 @@
 name: Example App Builds
 
+# Builds every example from the published SDK packages the kit pins. Besides
+# pull requests, it runs on each push to dev, staging and main: the MentraOS
+# Starter Kit export pushes one "Release <version>" commit per release there,
+# and this run validates it.
+
 "on":
   pull_request:
     branches:
       - main
       - dev
       - staging
+  push:
+    branches:
+      - main
+      - dev
+      - staging
   workflow_dispatch:
-    inputs:
-      artifact_suffix:
-        description: Optional coordinated release identity appended to filenames
-        required: false
-        type: string
 
 permissions:
   contents: read
 
-# Newest validation per ref wins. Coordinated publication has separate
-# non-canceling channel concurrency in coordinated-example-release.yml.
+# Newest validation per ref wins.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -27,16 +31,6 @@ env:
   GSTREAMER_VERSION: 1.28.2
 
 jobs:
-  release-contract:
-    name: Coordinated release contract
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Test coordinated release scripts
-        run: node --test .github/scripts/coordinated-example-release.test.mjs .github/scripts/react-native-acs-config.test.mjs .github/scripts/wait-for-example-validation.test.mjs .github/scripts/download-example-artifacts.test.mjs
-
   android:
     name: Native Android example
     runs-on: ubuntu-latest
@@ -144,7 +138,7 @@ jobs:
         if: steps.availability.outputs.available == 'true'
         id: collect
         env:
-          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix || steps.sdk-version.outputs.version }}
+          ARTIFACT_SUFFIX: ${{ steps.sdk-version.outputs.version }}
         run: |
           artifact_suffix="$ARTIFACT_SUFFIX"
           suffix="${artifact_suffix:+-$artifact_suffix}"
@@ -225,13 +219,13 @@ jobs:
             build
 
       - name: Package unsigned IPA
-        # Coordinated releases consume this artifact from their validation PR.
-        # Ordinary PRs only need the mandatory analysis and build above.
-        if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'coordinated/'))
+        # Manual runs also package an installable IPA; other runs only need
+        # the mandatory analysis and build above.
+        if: github.event_name == 'workflow_dispatch'
         id: collect
         working-directory: examples/ios
         env:
-          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix || steps.sdk-version.outputs.version }}
+          ARTIFACT_SUFFIX: ${{ steps.sdk-version.outputs.version }}
         run: |
           app_path=$(find build/Build/Products/Debug-iphoneos -maxdepth 1 -name '*.app' -print -quit)
           if [ -z "$app_path" ]; then
@@ -247,7 +241,7 @@ jobs:
           echo "path=examples/ios/$output" >> "$GITHUB_OUTPUT"
 
       - name: Upload IPA artifact
-        if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'coordinated/'))
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: mentra-example-ios
@@ -384,6 +378,14 @@ jobs:
         working-directory: examples/react-native
         run: bunx tsc --noEmit
 
+      # Exports from MentraOS carry the example's own app config tests.
+      - name: App config tests
+        working-directory: examples/react-native
+        run: |
+          if jq -e '.scripts["test:app-config"]' package.json > /dev/null; then
+            bun run test:app-config
+          fi
+
       - name: Generate Android project
         working-directory: examples/react-native
         run: bunx expo prebuild --platform android --no-install
@@ -409,7 +411,7 @@ jobs:
       - name: Collect APK
         id: collect
         env:
-          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix || steps.sdk-version.outputs.version }}
+          ARTIFACT_SUFFIX: ${{ steps.sdk-version.outputs.version }}
         run: |
           artifact_suffix="$ARTIFACT_SUFFIX"
           suffix="${artifact_suffix:+-$artifact_suffix}"
@@ -510,7 +512,7 @@ jobs:
       - name: Collect APK
         id: collect
         env:
-          ARTIFACT_SUFFIX: ${{ inputs.artifact_suffix || steps.sdk-version.outputs.version }}
+          ARTIFACT_SUFFIX: ${{ steps.sdk-version.outputs.version }}
         run: |
           artifact_suffix="$ARTIFACT_SUFFIX"
           suffix="${artifact_suffix:+-$artifact_suffix}"
