@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mentra/bluetooth-sdk": "3.4.0-dev.1045",
+    "@mentra/bluetooth-sdk": "3.4.0-dev.1050",
     "expo": "~55.0.24",
     "expo-build-properties": "~55.0.14",
     "expo-dev-client": "~55.0.34",
@@ -22,5 +22,8 @@
   "devDependencies": {
     "@types/react": "^19.1.0",
     "typescript": "~5.9.2"
+  },
+  "patchedDependencies": {
+    "expo-modules-core@55.0.25": "patches/expo-modules-core@55.0.25.patch"
   }
 }

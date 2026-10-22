@@ -1,71 +1,68 @@
+const fs = require("fs");
 const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
 
 const projectRoot = __dirname;
-const sdkRoot = process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH
-  ? path.resolve(process.env.MENTRA_BLUETOOTH_SDK_PACKAGE_PATH)
-  : path.dirname(
-      require.resolve("@mentra/bluetooth-sdk/package.json", {
-        paths: [projectRoot],
-      }),
-    );
-const sharedPackages = [
-  "expo",
-  "expo-modules-core",
-  "react",
-  "react-native",
-];
-const appPackageRoots = Object.fromEntries(
-  sharedPackages.map((packageName) => [
-    packageName,
-    path.dirname(
-      require.resolve(`${packageName}/package.json`, {
-        paths: [projectRoot],
-      }),
-    ),
-  ]),
+// expo-modules-core is a dependency of expo rather than of the app, so with
+// an isolated install it is resolved from expo's own location.
+const expoRoot = path.dirname(
+  require.resolve("expo/package.json", { paths: [projectRoot] }),
 );
+const singletonOrigins = {
+  react: projectRoot,
+  "react-native": projectRoot,
+  expo: projectRoot,
+  "expo-modules-core": expoRoot,
+};
 
 const config = getDefaultConfig(projectRoot);
 const defaultResolveRequest = config.resolver.resolveRequest;
 
-function redirectedSdkModuleName(moduleName) {
-  if (moduleName === "@mentra/bluetooth-sdk") {
-    return sdkRoot;
-  }
-  if (moduleName === "@mentra/bluetooth-sdk/react") {
-    return path.join(sdkRoot, "src", "react");
-  }
-  if (moduleName === "@mentra/bluetooth-sdk/internal") {
-    return path.join(sdkRoot, "src", "_internal.ts");
-  }
-  if (moduleName.startsWith("@mentra/bluetooth-sdk/")) {
-    return path.join(
-      sdkRoot,
-      "src",
-      moduleName.slice("@mentra/bluetooth-sdk/".length),
-    );
-  }
-  return null;
+// Inside MentraOS this app is a member of the examples/ Bun workspace, which
+// links the @mentra packages to the SDK source in mobile/modules and
+// cloud-v2/packages and keeps npm packages in examples/node_modules. The SDK
+// packages are also members of the root, mobile/, cloud-v2/ and sdk/
+// workspaces, so their own dependency links point into whichever of those
+// stores was installed last. Metro only serves files inside watched folders,
+// so watch all of them.
+// In a standalone copy of this example every package is under its node_modules.
+const repoRoot = path.resolve(projectRoot, "..", "..", "..");
+const sourceFolders = [
+  ...["", "examples", "mobile", "cloud-v2", "sdk"].map((workspace) =>
+    path.join(repoRoot, workspace, "node_modules"),
+  ),
+  path.join(repoRoot, "mobile", "modules"),
+  path.join(repoRoot, "cloud-v2", "packages"),
+];
+if (fs.existsSync(path.join(repoRoot, "mobile", "modules", "bluetooth-sdk"))) {
+  config.watchFolders = Array.from(
+    new Set([
+      ...(config.watchFolders || []),
+      ...sourceFolders.filter((folder) => fs.existsSync(folder)),
+    ]),
+  );
 }
 
-config.watchFolders = Array.from(
-  new Set([...(config.watchFolders || []), sdkRoot]),
-);
-config.resolver.extraNodeModules = {
-  ...(config.resolver.extraNodeModules || {}),
-  "@mentra/bluetooth-sdk": sdkRoot,
-  ...appPackageRoots,
-};
+// Use one copy of React, React Native and Expo: the app's own. Another
+// workspace's install can link an SDK package's react or react-native to a
+// different copy, so resolve these packages, and their subpaths, from the app
+// wherever they are imported.
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  const redirectedModuleName =
-    redirectedSdkModuleName(moduleName) ?? appPackageRoots[moduleName] ?? moduleName;
+  const singleton = Object.keys(singletonOrigins).find(
+    (name) => moduleName === name || moduleName.startsWith(`${name}/`),
+  );
+  const resolveContext = singleton
+    ? {
+        ...context,
+        originModulePath: path.join(singletonOrigins[singleton], "package.json"),
+      }
+    : context;
 
-  if (defaultResolveRequest) {
-    return defaultResolveRequest(context, redirectedModuleName, platform);
-  }
-
-  return context.resolveRequest(context, redirectedModuleName, platform);
+  return (defaultResolveRequest ?? context.resolveRequest)(
+    resolveContext,
+    moduleName,
+    platform,
+  );
 };
 config.resolver.unstable_enableSymlinks = true;
 

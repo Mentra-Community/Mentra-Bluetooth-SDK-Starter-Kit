@@ -8,7 +8,7 @@ silicon Mac through TestFlight still follows the iOS path.
 
 This guide shows how to add the Mentra Bluetooth SDK to Android, iOS, and React Native apps, then connect to Mentra Live and read glasses status.
 
-Use the latest SDK version published by Mentra. The example apps in this repo are designed to work from a fresh clone with the Maven, SwiftPM, and JavaScript packages, without any local MentraOS checkout.
+Use the latest SDK version published by Mentra. In the standalone Starter Kit, the example apps use the published Maven, SwiftPM, and JavaScript packages. Inside MentraOS (`examples/bluetooth`), the same examples build against the SDK source in that checkout; see each example's README.
 
 ## Requirements
 
@@ -59,12 +59,17 @@ dependencies {
 
 The packaging rules avoid duplicate native library conflicts from the SDK audio and transcription stack.
 
-For unreleased SDK development, publish the SDK to Maven local from the MentraOS checkout and keep `mavenLocal()` in your app repositories:
+For unreleased SDK development, build the SDK from a MentraOS checkout through a Gradle composite build instead of a published version. In your app's `settings.gradle.kts`:
 
-```bash
-cd /path/to/MentraOS/mobile/android
-./gradlew :lc3Lib:publishToMavenLocal :mentra-bluetooth-sdk:publishToMavenLocal
+```kotlin
+includeBuild("/path/to/MentraOS/mobile/modules/bluetooth-sdk/android") {
+    dependencySubstitution {
+        substitute(module("com.mentraglass:bluetooth-sdk")).using(project(":"))
+    }
+}
 ```
+
+Declare the Android Gradle Plugin in your app's root build and install the Android NDK. The native Android example in MentraOS uses this setup.
 
 ### iOS
 
@@ -143,51 +148,7 @@ bunx expo run:android
 
 The React Native starter example also includes `bun run android:dev`, which starts Metro first, forwards the device's `localhost:8081` over USB, installs the native app, and opens the Expo dev-client URL so the first launch does not land on the blank launcher screen.
 
-For unreleased React Native SDK development, point the installed package folder
-at your local SDK checkout and set the same path for Metro. This works even
-when the local source package version does not match the published version in
-`package.json`, because Expo native autolinking reads the symlinked package
-folder directly.
-
-```bash
-cd examples/react-native
-SDK_PATH="/path/to/MentraOS-dev/mobile/modules/bluetooth-sdk"
-
-mkdir -p node_modules/@mentra
-rm -rf node_modules/@mentra/bluetooth-sdk
-ln -s "$SDK_PATH" node_modules/@mentra/bluetooth-sdk
-
-export MENTRA_BLUETOOTH_SDK_PACKAGE_PATH="$SDK_PATH"
-bunx expo run:ios
-# or
-bun run android:dev
-```
-
-Do not use `bun add --no-save` for this override. The local SDK package has the
-same package name as the published dependency, so Bun can treat the override as a
-self-dependency loop. If you run `bun install`, recreate the symlink before
-testing from source again. To return to the published package, remove the
-symlink and run `bun install`.
-
-To switch a React Native example back from local SDK source to the published
-package, unset the Metro override, remove the symlinked package folder, and
-install the published SDK version:
-
-```bash
-cd examples/react-native
-
-unset MENTRA_BLUETOOTH_SDK_PACKAGE_PATH
-rm -rf node_modules/@mentra/bluetooth-sdk
-
-bun add @mentra/bluetooth-sdk@0.1.20
-bun install
-```
-
-For the native Android example, unset `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` before
-building and omit `-PmentraUseMavenLocal=true` when you want Maven Central rather
-than local artifacts. For the native iOS example, remove any local Swift package
-override in Xcode and resolve the remote `mentra-bluetooth-sdk-ios` package at
-the published version.
+For unreleased SDK development, use the examples inside MentraOS (`examples/bluetooth`): the React Native examples are members of the `examples/` Bun workspace, which links `@mentra/bluetooth-sdk` to the SDK source, and the native Android and Apple examples reference the SDK source directly. Each example's README describes the setup.
 
 ## Permissions
 
@@ -220,7 +181,7 @@ Declare Core Bluetooth background mode in your iOS app's `Info.plist`. Without
 it, iOS suspends your app when the phone locks and delivers no Bluetooth events
 to it, so the glasses link stops working in the background. A Swift package
 cannot declare background modes for your app. The native example declares it in
-`examples/ios/MentraExample-Info.plist`.
+`ios/MentraExample-Info.plist`.
 
 An upcoming SDK release, tracked in Mentra-Community/MentraOS#4386, also
 reconnects in the background after the glasses drop the link, for example while
@@ -421,27 +382,32 @@ if (savedDevice) {
 
 ## Run The Examples
 
-From a fresh clone:
+From a fresh clone of the standalone Starter Kit:
 
 ```bash
 git clone <starter-kit-repo-url>
 cd <starter-kit-directory>
 ```
 
+Inside MentraOS, run the commands below from `examples/bluetooth`, and install
+the React Native examples' dependencies once with `bun install` in `examples/`
+instead of in each example; see the
+[React Native example README](../examples/react-native/README.md#install).
+
 Run one of:
 
 ```bash
-cd examples/android
+cd android
 ./gradlew installDebug
 ```
 
 ```bash
-cd examples/ios
+cd ios
 open MentraExample.xcodeproj
 ```
 
 ```bash
-cd examples/react-native
+cd react-native
 bun install
 bun run ios:setup
 bunx expo prebuild
@@ -452,10 +418,10 @@ bun run android:dev
 
 `bun run ios:setup` installs the GStreamer iOS SDK used by the React Native example's direct phone WebRTC preview.
 
-For photo/video upload and RTMP/SRT/WebRTC demos, start the local helper from the repo root:
+For photo/video upload and RTMP/SRT/WebRTC demos, start the local helper from the Starter Kit root:
 
 ```bash
-python3 examples/local-demo-cloud/server.py
+python3 local-demo-cloud/server.py
 ```
 
 Paste the printed LAN URLs into the example apps. Do not use `localhost`; the glasses and phone need a reachable LAN address.
