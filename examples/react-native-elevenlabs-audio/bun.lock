@@ -5,7 +5,7 @@
     "": {
       "name": "mentra-elevenlabs-audio-repro",
       "dependencies": {
-        "@mentra/bluetooth-sdk": "3.3.0-beta.1033",
+        "@mentra/bluetooth-sdk": "3.3.0-beta.1068",
         "expo": "~55.0.24",
         "expo-build-properties": "~55.0.14",
         "expo-dev-client": "~55.0.34",
@@ -290,9 +290,9 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@mentra/bluetooth-sdk": ["@mentra/bluetooth-sdk@3.3.0-beta.1033", "", { "dependencies": { "@mentra/cloud-protocol": "3.3.0-beta.1033" }, "peerDependencies": { "@expo/config-plugins": ">=8.0.0", "@types/react": ">=18.0.0", "expo": ">=49.0.0", "react": ">=18.0.0", "react-native": ">=0.72.0" } }, "sha512-HXb03Xb9uZQfc5EpqbMTi+rnfn+k65qVgcqbHpdXzrub7OBNrAsyf65PMUDbw2DYp+KXGzQ/cWVFniIuKMf7RA=="],
+    "@mentra/bluetooth-sdk": ["@mentra/bluetooth-sdk@3.3.0-beta.1068", "", { "dependencies": { "@mentra/cloud-protocol": "3.3.0-beta.1068" }, "peerDependencies": { "@expo/config-plugins": ">=8.0.0", "@types/react": ">=18.0.0", "expo": ">=49.0.0", "react": ">=18.0.0", "react-native": ">=0.72.0" } }, "sha512-WiL5jyrPhT7XLI8v5Tdzdi5dv8q8PKUL75nogmuEbZcuPq/4EamEYmtzM3aKYFBhRuN9f5KI8huX8pIG4aj5Vg=="],
 
-    "@mentra/cloud-protocol": ["@mentra/cloud-protocol@3.3.0-beta.1033", "", { "dependencies": { "zod": "^3.24.1" } }, "sha512-5Pk2dTJ1z5AAGoO9WFnJXSY5OXVuwxJYNW/zII9xp67lH3ZhCjVLXH98bNzIvXQKHLa0DfLhCfRtMN61qlObZg=="],
+    "@mentra/cloud-protocol": ["@mentra/cloud-protocol@3.3.0-beta.1068", "", { "dependencies": { "zod": "^3.24.1" } }, "sha512-Da6Qj5lXr9ta/+XtNQ6UHb3+0+8ln1EGlOv9THA3PvX7sKCQmmR7rRJPrVCMqBS+iUU2W3rUU2OnUFs75lhWCQ=="],
 
     "@react-native/assets-registry": ["@react-native/assets-registry@0.83.6", "", {}, "sha512-iljb4ue1yWJ3EhySz7EjV6CzSVrI2uNtR8BI2jzP5+QS5E4Cl3fdIJRmVwDEx1pu8uE97PGEusGRHnoaZ9Q3jg=="],
 
