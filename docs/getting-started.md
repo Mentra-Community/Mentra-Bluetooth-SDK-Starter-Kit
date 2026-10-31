@@ -225,7 +225,7 @@ cannot declare background modes for your app. The native example declares it in
 For SDK behavior when reconnecting in the background after the glasses drop
 the link, for example while their Bluetooth chip restarts during a software
 update, see [Background Operation](https://docs.mentraglass.com/bluetooth-sdk/ios#background-operation)
-and Mentra-Community/MentraOS#4386. These examples pin production SDK `3.2.1`.
+and Mentra-Community/MentraOS#4386. These examples pin production SDK `3.3.0`.
 
 ```xml
 <key>UIBackgroundModes</key>
