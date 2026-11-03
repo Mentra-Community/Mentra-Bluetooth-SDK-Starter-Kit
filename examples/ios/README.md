@@ -2,7 +2,9 @@
 
 Native iOS reference app for the Mentra Bluetooth SDK, built with SwiftUI and Swift Package Manager.
 
-This example installs the SDK as the `MentraBluetoothSDK` Swift package. No path to a local MentraOS checkout is required for normal SDK use.
+The app depends on the `MentraBluetoothSDK` Swift package. In MentraOS the
+Xcode project references the SDK source as a local package; the standalone
+Starter Kit pins the published SwiftPM version instead.
 
 ## Requirements
 
@@ -11,23 +13,20 @@ This example installs the SDK as the `MentraBluetoothSDK` Swift package. No path
 - A physical iPhone for Bluetooth, camera, microphone, direct phone photo, and direct phone WebRTC testing.
 - Mentra smart glasses with Bluetooth enabled.
 
-## SDK Version
+## SDK Source
 
-The Xcode project pins an exact version of the public Swift package configured
-in [`project.yml`](./project.yml):
-
-```text
-https://github.com/Mentra-Community/mentra-bluetooth-sdk-ios.git
-```
-
-Use Xcode's package dependency editor to update the version when a newer SDK is published.
-
-When validating unreleased SDK changes from a local MentraOS checkout, replace
-that package dependency with a local package pointing at:
+The Xcode project, and the XcodeGen spec in [`project.yml`](./project.yml),
+reference the SDK as a local Swift package at:
 
 ```text
-/path/to/MentraOS/mobile/modules/bluetooth-sdk
+../../../mobile/modules/bluetooth-sdk
 ```
+
+That folder's `Package.swift` provides the `MentraBluetoothSDK` product, so SDK
+source changes are picked up by the next build. To use a published SDK instead,
+replace the local package with
+`https://github.com/Mentra-Community/mentra-bluetooth-sdk-ios.git` at a
+published version.
 
 The camera FOV controls in this example use the new `setCameraFov` result:
 they disable repeated applies while the command is in flight, then re-enable
@@ -37,7 +36,7 @@ the SDK throws an error.
 ## Run
 
 ```bash
-cd examples/ios
+cd ios
 open MentraExample.xcodeproj
 ```
 
@@ -66,10 +65,10 @@ The example has five tabs:
 
 ## Local Media And Streaming Helper
 
-From the repo root:
+From the Starter Kit root:
 
 ```bash
-python3 examples/local-demo-cloud/server.py
+python3 local-demo-cloud/server.py
 ```
 
 Paste the printed LAN `/upload` URL into the Camera screen. Paste the printed RTMP, SRT, or WHIP publish URL into the Stream screen. If Docker is not installed or not running, the helper still starts the media webhook and skips streaming with a warning.

@@ -4,7 +4,7 @@
 
 - Confirm your app has the required Maven repositories configured, including `mavenCentral()` and `maven("https://www.jitpack.io")`.
 - Confirm `com.mentraglass:bluetooth-sdk:<version>` matches the version in your release notes.
-- If you are testing an unreleased SDK, publish the SDK and companion artifacts to `mavenLocal()` and include `mavenLocal()` in the example app repositories.
+- If you are testing an unreleased SDK, build it from a MentraOS checkout through a Gradle composite build; see [Getting Started](getting-started.md#android).
 
 ## Android Build Fails On Native Libraries
 
@@ -37,12 +37,12 @@ Fix:
 - React Native / Expo example: set `MENTRA_IOS_BUNDLE_ID` to your own reverse-DNS identifier and regenerate the native project:
 
   ```bash
-  cd examples/react-native
+  cd react-native
   MENTRA_IOS_BUNDLE_ID=com.yourname.mentrasdkrn bunx expo prebuild --clean --platform ios
   bunx expo run:ios --device
   ```
 
-- Native iOS example: open `examples/ios/MentraExample.xcodeproj` in Xcode, select the `MentraExample` target, and change the Bundle Identifier under **Signing & Capabilities** before selecting your team.
+- Native iOS example: open `ios/MentraExample.xcodeproj` in Xcode, select the `MentraExample` target, and change the Bundle Identifier under **Signing & Capabilities** before selecting your team.
 
 If the error also lists a Push Notifications capability, that entitlement is not part of the examples. Remove the capability from the target in Xcode or regenerate the native project.
 
@@ -52,11 +52,9 @@ If the error also lists a Push Notifications capability, that entitlement is not
 - Run `bunx expo prebuild` after adding the SDK plugin to `app.json`.
 - Confirm `@mentra/bluetooth-sdk` is installed in the app that is being prebuilt.
 - On iOS, rerun `bunx expo run:ios` after changing native module dependencies.
-- If you are testing a local SDK package, symlink
-  `node_modules/@mentra/bluetooth-sdk` to the local source checkout and set
-  `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` to that same path. The symlink is for Expo
-  native autolinking; the environment variable is for Metro JavaScript
-  resolution.
+- If you are testing unreleased SDK source, build the example inside MentraOS
+  (`examples/bluetooth`), where `@mentra/bluetooth-sdk` is a workspace link to
+  the SDK source used by both Metro and Expo native autolinking.
 
 ## Bluetooth Permission Problems
 
@@ -111,11 +109,11 @@ No app-level framing changes are required; negotiation is internal to the SDK. S
 - Confirm Mentra Live is connected to Wi-Fi before starting the stream.
 - For RTMP, the native iOS example embeds the derived HLS preview URL while live. You can also open or refresh the printed HLS preview URL on your computer after tapping **Start stream**.
 - If Docker is running in bridge mode, confirm UDP ports `8890` and `8189` are published.
-- If the helper picked the wrong network interface, restart it with `python3 examples/local-demo-cloud/server.py --host-ip <computer-lan-ip>`.
+- If the helper picked the wrong network interface, restart it with `python3 local-demo-cloud/server.py --host-ip <computer-lan-ip>`.
 
 ## React Native Or Expo Apps
 
-React Native and Expo apps use the `@mentra/bluetooth-sdk` package and must run as development builds or production native builds. Expo Go cannot load the native SDK. Start from `examples/react-native` for Expo, `examples/android` for bare Android, or `examples/ios` for bare iOS.
+React Native and Expo apps use the `@mentra/bluetooth-sdk` package and must run as development builds or production native builds. Expo Go cannot load the native SDK. Start from `react-native` for Expo, `android` for bare Android, or `ios` for bare iOS.
 
 If Android prebuild succeeds but native linking fails, confirm the generated project includes `:lc3Lib` in `android/settings.gradle`. The SDK plugin adds this module automatically during prebuild.
 
