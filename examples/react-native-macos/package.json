@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.25.0",
-    "@mentra/bluetooth-sdk": "3.5.0-dev.1289",
+    "@mentra/bluetooth-sdk": "3.5.0-dev.1333",
     "expo": "~55.0.24",
     "react": "19.2.0",
     "react-native": "0.83.6",
@@ -26,6 +26,7 @@
     "typescript": "~5.9.2"
   },
   "patchedDependencies": {
-    "expo-modules-core@55.0.25": "patches/expo-modules-core@55.0.25.patch"
+    "expo-modules-core@55.0.25": "patches/expo-modules-core@55.0.25.patch",
+    "react-native-webview@13.16.0": "patches/react-native-webview@13.16.0.patch"
   }
 }

@@ -4,6 +4,9 @@ name: Example App Builds
 # pull requests, it runs on each push to dev, staging and main: the MentraOS
 # Starter Kit export pushes one "Release <version>" commit per release there,
 # and this run validates it.
+#
+# The kit's CI is exported with the examples, from examples/bluetooth/.github
+# in MentraOS: change it there, not in the kit.
 
 "on":
   pull_request:
@@ -262,7 +265,8 @@ jobs:
 
   react-native-macos:
     name: React Native macOS example
-    runs-on: macos-15
+    # Expo SDK 55's expo-modules-core needs Swift 6.2 (Xcode 26).
+    runs-on: macos-26
     timeout-minutes: 45
     env:
       RCT_NO_LAUNCH_PACKAGER: 1
