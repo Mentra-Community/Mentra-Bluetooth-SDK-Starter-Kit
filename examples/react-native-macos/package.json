@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.25.0",
-    "@mentra/bluetooth-sdk": "3.5.0-dev.1340",
+    "@mentra/bluetooth-sdk": "3.5.0-dev.1343",
     "expo": "~55.0.24",
     "react": "19.2.0",
     "react-native": "0.83.6",
