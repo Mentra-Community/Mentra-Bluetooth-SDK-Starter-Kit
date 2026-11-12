@@ -1,31 +1,31 @@
 {
   "schemaVersion": 1,
   "kind": "mentra-bluetooth-starter-kit",
-  "releaseIdentity": "3.4.0-beta.1383",
+  "releaseIdentity": "3.4.0-beta.1385",
   "channel": "beta",
   "sourceRepository": "Mentra-Community/MentraOS",
-  "sourceCommit": "d9748c32035b75c290c01a9813111e285e0a5b31",
+  "sourceCommit": "3682fb1e403259cbbd3206200959551e83a37f03",
   "sourcePath": "examples/bluetooth",
   "releaseRecord": {
-    "url": "https://artifactscdn.mentraglass.com/Mentra-Community/MentraOS/releases/mentra-builds-v3.4.0/mentra-release-3.4.0-beta.1383.json",
-    "sha256": "9d5e4f6f598eb63f19e216bef292caa985e63b850a17811d24a46ac6391fd8c8"
+    "url": "https://artifactscdn.mentraglass.com/Mentra-Community/MentraOS/releases/mentra-builds-v3.4.0/mentra-release-3.4.0-beta.1385.json",
+    "sha256": "9e0eafcee3371d9317fb5581f71b271f1b87e4299214dbe2d8f2a8a3a54da379"
   },
   "otaManifest": {
-    "url": "https://artifactscdn.mentraglass.com/Mentra-Community/MentraOS/releases/mentra-builds-v3.4.0/mentra-live-ota-3.4.0-beta.1383.json",
-    "sha256": "1a038ec7c0f85c83b29c1b7714529fe9ff7d159269ce15462ceb3be9bcaa27bb"
+    "url": "https://artifactscdn.mentraglass.com/Mentra-Community/MentraOS/releases/mentra-builds-v3.4.0/mentra-live-ota-3.4.0-beta.1385.json",
+    "sha256": "a859385fe009dea41ab377937ac1c899af80ca7639fc535f1d3a8aca14307079"
   },
   "packages": {
     "npm": {
-      "@mentra/bluetooth-sdk": "3.4.0-beta.1383",
-      "@mentra/engine": "3.4.0-beta.1383"
+      "@mentra/bluetooth-sdk": "3.4.0-beta.1385",
+      "@mentra/engine": "3.4.0-beta.1385"
     },
     "maven": [
-      "com.mentraglass:bluetooth-sdk:3.4.0-beta.1383",
-      "com.mentraglass:lc3Lib:3.4.0-beta.1383"
+      "com.mentraglass:bluetooth-sdk:3.4.0-beta.1385",
+      "com.mentraglass:lc3Lib:3.4.0-beta.1385"
     ],
     "swiftPackage": {
       "url": "https://github.com/Mentra-Community/mentra-bluetooth-sdk-ios.git",
-      "exactVersion": "3.4.0-beta.1383"
+      "exactVersion": "3.4.0-beta.1385"
     }
   }
 }
