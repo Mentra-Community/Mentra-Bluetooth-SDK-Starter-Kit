@@ -2,7 +2,7 @@
 import PackageDescription
 
 // Uses the published Mentra Bluetooth SDK Swift package.
-let sdkVersion = "3.4.0-beta.1389"
+let sdkVersion = "3.4.0-beta.1390"
 
 let package = Package(
     name: "MentraMacExample",
