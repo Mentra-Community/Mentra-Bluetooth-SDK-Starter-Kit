@@ -12,7 +12,7 @@ function fixture(t, dependencies) {
   mkdirSync(engine, {recursive: true})
   writeFileSync(path.join(engine, 'package.json'), JSON.stringify({name: '@mentra/engine', dependencies}))
   const configPath = path.join(root, 'app.config.js')
-  copyFileSync(new URL('../../examples/react-native/app.config.js', import.meta.url), configPath)
+  copyFileSync(new URL('../app.config.js', import.meta.url), configPath)
   return {engine, configure: createRequire(configPath)(configPath)}
 }
 
@@ -31,6 +31,17 @@ test('ACS uses the exact Engine dependency even when it is not hoisted', (t) => 
   const config = {name: 'Example', plugins: ['expo-audio'], extra: {releaseIdentity: '3.2.0-dev.136'}}
   assert.deepEqual(configure({config}), {...config, plugins: ['expo-audio', realpathSync(plugin)]})
   assert.deepEqual(config.plugins, ['expo-audio'])
+})
+
+test('Crust, the miniapp runtime, comes from the Engine dependency like ACS', (t) => {
+  const {engine, configure} = fixture(t, {'@mentra/crust': '3.4.0', '@mentra/acs-meeting': '3.4.0'})
+  const plugins = ['crust', 'acs-meeting'].map((name) => {
+    const dir = path.join(engine, `node_modules/@mentra/${name}`)
+    mkdirSync(dir, {recursive: true})
+    writeFileSync(path.join(dir, 'app.plugin.js'), 'module.exports = config => config\n')
+    return realpathSync(path.join(dir, 'app.plugin.js'))
+  })
+  assert.deepEqual(configure({config: {plugins: ['expo-audio']}}).plugins, ['expo-audio', ...plugins])
 })
 
 test('an Engine release declaring ACS fails clearly if its plugin is missing', (t) => {

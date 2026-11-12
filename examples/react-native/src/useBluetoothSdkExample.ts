@@ -423,7 +423,6 @@ export type BluetoothSdkExampleState = {
 
 export type BluetoothSdkExampleActions = {
   captureAndUpload: () => Promise<void>;
-  clearDefaultDevice: () => Promise<void>;
   clearDisplay: () => Promise<void>;
   connect: () => Promise<void>;
   connectDevice: (device: Device) => Promise<void>;
@@ -474,6 +473,7 @@ export type BluetoothSdkExampleActions = {
   setWebhookUrl: (url: string) => void;
   setVoiceActivityDetectionEnabled: (enabled: boolean) => Promise<void>;
   startScan: () => Promise<void>;
+  unpair: () => Promise<void>;
   testWebhook: () => Promise<void>;
   toggleHotspot: () => Promise<void>;
   setWifiAdbState: (enabled: boolean) => Promise<void>;
@@ -1155,9 +1155,13 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     });
   }
 
-  async function clearDefaultDevice() {
-    await runAction('Clear default', async () => {
-      await bluetooth.clearDefaultDevice();
+  // Unpair, as the Mentra App's Unpair does: the SDK forgets the glasses and, on Mentra Live, removes the phone's
+  // Bluetooth bond, so the next pairing starts from pairing mode.
+  async function unpair() {
+    await runAction('Unpair', async () => {
+      stopDirectStreamFrameWatchdog();
+      await bluetooth.unpair();
+      applyDisconnectedState('Unpaired');
     });
   }
 
@@ -3171,7 +3175,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
       };
       if (typeof sdkWithWifiAdb.setWifiAdbState !== 'function') {
         throw new Error(
-          `BluetoothSdk.setWifiAdbState is missing from JS. Point MENTRA_BLUETOOTH_SDK_PACKAGE_PATH at MentraOS mobile/modules/bluetooth-sdk and rebuild via: ${rebuildHint}`,
+          `BluetoothSdk.setWifiAdbState is missing from JS. Use an SDK version that provides it and rebuild via: ${rebuildHint}`,
         );
       }
       try {
@@ -3687,7 +3691,6 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     cameraSettingsApplying,
     cameraSettingsStatus,
     captureAndUpload,
-    clearDefaultDevice,
     clearDisplay,
     connect,
     connectDevice,
@@ -3799,6 +3802,7 @@ export function useBluetoothSdkExample(options: BluetoothSdkExampleOptions = {})
     setVoiceActivityDetectionEnabled: setVoiceActivityDetectionEnabledAction,
     selectedDiscoveredDevice,
     startScan,
+    unpair,
     streamCloudServerEnabled,
     streamFps,
     streamProtocol,
@@ -4298,15 +4302,15 @@ function webrtcPreviewUrl(whipUrlText: string) {
 }
 
 function localWebrtcSetupMessage(detail: string) {
-  return `Local WebRTC server not reachable (${detail}). Run python3 examples/local-demo-cloud/server.py and paste the printed WHIP publish URL.`;
+  return `Local WebRTC server not reachable (${detail}). Run python3 local-demo-cloud/server.py and paste the printed WHIP publish URL.`;
 }
 
 function localRtmpSetupMessage(detail: string) {
-  return `Local RTMP/HLS server not reachable (${detail}). Run python3 examples/local-demo-cloud/server.py and paste the printed RTMP publish URL.`;
+  return `Local RTMP/HLS server not reachable (${detail}). Run python3 local-demo-cloud/server.py and paste the printed RTMP publish URL.`;
 }
 
 function localSrtSetupMessage(detail: string) {
-  return `Local SRT/HLS server not reachable (${detail}). Run python3 examples/local-demo-cloud/server.py and paste the printed SRT publish URL.`;
+  return `Local SRT/HLS server not reachable (${detail}). Run python3 local-demo-cloud/server.py and paste the printed SRT publish URL.`;
 }
 
 function streamUrlValidationMessage(streamUrl: string) {

@@ -2,7 +2,7 @@
 
 Expo development-build reference app for the Mentra Bluetooth SDK.
 
-This example installs `@mentra/bluetooth-sdk` and `@mentra/engine`. App code imports the SDK through the curated `@mentra/engine/bluetooth-sdk` entry points, which omit the SDK's debug and devtools-only namespaces. The direct SDK dependency supplies its Expo config plugin and native modules. The example demonstrates the same Device, Camera, Stream, System, and Console flows as the native Android and iOS examples. Its full-page Mentra Live update UI is intentionally app-owned and uses `useMentraLiveOta`; its page content and actions mirror the Mentra App flow while its visual styling follows this example app. Mentra Engine still owns the complete OTA coordinator underneath it.
+This example installs `@mentra/bluetooth-sdk` and `@mentra/engine`. App code imports the SDK through the curated `@mentra/engine/bluetooth-sdk` entry points, which omit the SDK's debug and devtools-only namespaces. The direct SDK dependency supplies its Expo config plugin and native modules. The example demonstrates the same Device, Camera, Stream, System, and Console flows as the native Android and iOS examples. Its full-page Mentra Live update UI is intentionally app-owned and uses `useMentraLiveOta`; its page content and actions mirror the Mentra App flow while its visual styling follows this example app. Mentra Engine still owns the complete OTA coordinator underneath it. Its Mentra Live pairing flow is app-owned the same way: the Device tab's **Pair Mentra Live** opens custom pages in `src/pairing` over `useMentraLivePairing`, and Engine owns the scan, bond adoption, readiness, Pair Audio and failure handling underneath.
 
 Expo Go cannot load the SDK because the package contains native Android and iOS code. Use `bunx expo run:ios`, `bun run android:dev`, EAS development builds, or production native builds.
 
@@ -16,26 +16,43 @@ Expo Go cannot load the SDK because the package contains native Android and iOS 
 
 ## Install
 
+From the MentraOS root:
+
 ```bash
-cd examples/react-native
+cd examples
 bun install
+cd bluetooth/react-native
 ```
 
-The example depends on the exact SDK and Engine versions pinned in
-[`package.json`](./package.json). Those two package versions must match.
+In MentraOS, this example builds against the SDK source. It is a member of the `examples/` Bun workspace
+([`examples/package.json`](https://github.com/Mentra-Community/MentraOS/blob/dev/examples/package.json)), which links `@mentra/*`
+(`workspace:*`) to the SDK source in `mobile/modules` and `cloud-v2/packages`
+and keeps one Expo / React Native version for all the examples. Install from
+`examples/`; installing also runs the linked packages' `prepare` scripts, which
+build them.
+The linked packages here are `@mentra/bluetooth-sdk`, `@mentra/engine` and
+Engine's `@mentra/*` dependencies.
+
+To type check, also build Engine's declarations, which the example's imports
+resolve to:
+
+```bash
+(cd ../../../mobile/modules/engine && bun run build)
+bunx tsc --noEmit
+```
+
+Metro and the native builds use the SDK source directly. `metro.config.js`
+watches `examples/node_modules`, `mobile/modules` and `cloud-v2/packages` so Metro can serve those files,
+and resolves React, React Native and Expo to the app's own copies.
 
 `app.config.js` enables the ACS native build plugin when the installed Engine
 includes ACS. It uses Engine's exact dependency for Android desugaring and iOS
 framework setup; older Engine versions without ACS keep the existing config.
 
-Use compatible SDK and Engine versions published by Mentra. When validating
-unreleased SDK changes, use the local source override below so JavaScript,
-Android, and iOS all resolve the same local package.
-
 ## Run On iOS
 
 ```bash
-cd examples/react-native
+cd react-native
 bun run ios:setup
 bunx expo prebuild
 bunx expo run:ios
@@ -45,7 +62,7 @@ Run on a physical iPhone for Bluetooth testing. Simulators are useful only for U
 
 ### Signing With Your Own Apple Developer Team
 
-The committed bundle identifier, `com.mentra.bluetoothsdk.example.reactnative`, is registered to Mentra's Apple Developer team. Apple App IDs are globally unique, so automatic signing for a physical-device build fails for any other team with errors such as `Provisioning Profile "iOS Team Provisioning Profile: *" does not support the Access Wi-Fi Information capability`, and the Apple Developer portal refuses to register the identifier. Simulator builds are not affected because they are not signed.
+The committed bundle identifier and Android package, `com.mentra.bluetoothsdkexample`, are registered to Mentra's Apple Developer team. Apple App IDs are globally unique, so automatic signing for a physical-device build fails for any other team with errors such as `Provisioning Profile "iOS Team Provisioning Profile: *" does not support the Access Wi-Fi Information capability`, and the Apple Developer portal refuses to register the identifier. Simulator builds are not affected because they are not signed.
 
 Set `MENTRA_IOS_BUNDLE_ID` to your own reverse-DNS identifier before generating the native project. `app.config.js` applies it on top of `app.json`:
 
@@ -73,7 +90,7 @@ GSTREAMER_ROOT_IOS=/path/to/iPhone.sdk bunx expo run:ios
 ## Run On Android
 
 ```bash
-cd examples/react-native
+cd react-native
 bunx expo prebuild
 bun run android:dev
 ```
@@ -107,7 +124,7 @@ Do not use `expo run:android` directly; it may install on whatever device Expo p
 - Builds `arm64-v8a` only (physical phones). Override with `REACT_NATIVE_ARCHITECTURES=...` if you need emulators.
 - Skips the old forced `:mentra-bluetooth-sdk:clean --rerun-tasks` Gradle pass. Use `SDK_CLEAN=1` only when you need a hard refresh of the SDK module.
 
-Local on-device STT/TTS via Sherpa-ONNX is **not** bundled in the public Android SDK (no-op stubs). Cloud transcription still works. That also avoids the ~54MB GitHub AAR download during Gradle configure.
+Local on-device STT/TTS via Sherpa-ONNX is **not** bundled in the published Android SDK (no-op stubs); cloud transcription still works. Built from source in MentraOS, the SDK's Android module uses the Mentra App's dependency set, so the first Gradle configure downloads the ~54MB Sherpa-ONNX AAR.
 
 Day-to-day iteration: prefer `bun run android:dev` after the first successful install.
 
@@ -123,7 +140,7 @@ permissions are blocked in `app.json`. Ordinary Bluetooth, Wi-Fi, location and
 audio permissions are separate and are not removed by this configuration.
 The existing iOS `audio` background mode is preserved explicitly in `infoPlist`.
 
-The pinned SDK includes Android `ForegroundService` support for the merged
+The SDK includes Android `ForegroundService` support for the merged
 host manifest at both startup and subsequent type selection. Do not downgrade
 the SDK below `3.2.0-dev.200` while using this configuration: older SDKs try to
 start undeclared service types. Rebuild the native app after changing these
@@ -157,43 +174,11 @@ miniapp-runtime native libraries.
 
 For production Expo apps that need BLE or microphone behavior while iOS is backgrounded or locked, see [Background Operation On iOS](../../docs/getting-started.md#background-operation-on-ios).
 
-## Local SDK Override
-
-Use this when developing SDK changes before the matching package release is
-published. Keep the committed dependency pinned to the published version so a
-clean checkout still works, then replace the installed package folder locally
-with your SDK source checkout.
-
-```bash
-cd examples/react-native
-SDK_PATH="/path/to/MentraOS-dev/mobile/modules/bluetooth-sdk"
-
-mkdir -p node_modules/@mentra
-rm -rf node_modules/@mentra/bluetooth-sdk
-ln -s "$SDK_PATH" node_modules/@mentra/bluetooth-sdk
-
-export MENTRA_BLUETOOTH_SDK_PACKAGE_PATH="$SDK_PATH"
-bunx expo run:ios
-# or
-bun run android:dev
-```
-
-The symlink makes Expo native autolinking and prebuild consume the local SDK
-package. `MENTRA_BLUETOOTH_SDK_PACKAGE_PATH` makes Metro resolve JavaScript from
-that same source folder. The local source package can have a different version
-than the published dependency in `package.json`; the override is path-based.
-
-Do not use `bun add --no-save` for this workflow. Because the local package is
-also named `@mentra/bluetooth-sdk`, Bun can report a dependency loop when it
-tries to resolve the override against the published dependency. If `bun install`
-restores `node_modules` from the lockfile, recreate the symlink. To go back to
-the published package, remove the symlink and run `bun install`.
-
 ## App Walkthrough
 
 The example has five tabs:
 
-- **Device**: scan for Mentra Live glasses, connect, disconnect, reconnect to the saved/default device, inspect battery, firmware, Wi-Fi, RSSI, and discovered-device state. Connecting Mentra Live opens the custom full-page OTA presentation in `src/ota` automatically; the Software Update action opens the same flow manually. The presentation mirrors the Mentra App's page content and controller actions in the example app's own visual style, keeps intermediate passes on the controller's `finishing` page, and renders the release transition and accumulated changelogs as styled Markdown in a bounded “What’s new” card only on final success. Hotspot/Wi-Fi transport, APK/MTK/BES sequencing, retries, restarts, and verification remain in Engine. Legacy glasses without hotspot OTA support can return to the System tab for Wi-Fi setup and resume the flow afterward.
+- **Device**: scan for Mentra Live glasses, connect, disconnect, reconnect to the saved/default device, inspect battery, firmware, Wi-Fi, RSSI, and discovered-device state. Connecting Mentra Live opens the custom full-page OTA presentation in `src/ota` automatically; the Software Update action opens the same flow manually. The presentation mirrors the Mentra App's page content and controller actions in the example app's own visual style, keeps intermediate passes on the controller's `finishing` page, and renders the release transition and accumulated changelogs as styled Markdown in a bounded “What’s new” card only on final success. Hotspot/Wi-Fi transport, APK/MTK/BES sequencing, retries, restarts, and verification remain in Engine. Legacy glasses without hotspot OTA support can return to the System tab for Wi-Fi setup and resume the flow afterward. **Pair Mentra Live** opens the custom full-page pairing presentation in `src/pairing`: power on, the scan with each pair's spoken code and pairing-mode state, connecting, Pair Audio and Forget the old pairing on iOS, success and failure, in the example app's own visual style. The scan, bond adoption, connection readiness and Pair Audio cancel remain in Engine. Pairing ends connected, so the update check then runs as after a Connect.
 - **Camera**: request photo upload to the local demo cloud or directly to this phone, choose automatic or BLE-only photo transfer, record and upload videos to the media webhook, tune manual exposure and ISO, enable **Text Capture Mode** for glasses-side max-resolution capture and text-region cropping, preview received media, or separately scan standard photo previews for barcodes. Text capture and barcode scanning are mutually exclusive; enabling either turns the other off. Direct phone photo is provided by the SDK, while barcode scanning is implemented in a companion local native module.
 - **Stream**: start RTMP, SRT, or WebRTC streams with SDK-managed keep-alives and preview HLS/WebRTC output. Android and iOS can receive WebRTC directly on the phone through the app-hosted GStreamer WHIP receiver.
 - **System**: scan/connect/forget Wi-Fi, toggle hotspot, change gallery mode, receive microphone PCM, and send RGB LED controls.
@@ -201,10 +186,10 @@ The example has five tabs:
 
 ## Local Media And Streaming Helper
 
-From the repo root:
+From the Starter Kit root:
 
 ```bash
-python3 examples/local-demo-cloud/server.py
+python3 local-demo-cloud/server.py
 ```
 
 Paste the printed LAN `/upload` URL into the Camera screen. Paste the printed RTMP, SRT, or WHIP publish URL into the Stream screen. If Docker is not installed or not running, the helper still starts the media webhook and skips streaming with a warning.
@@ -221,10 +206,11 @@ Do not use `localhost` in the app. The glasses, phone, and computer must be on a
 
 - `src/useBluetoothSdkExample.ts`: example-app orchestration for SDK lifecycle, event subscriptions, scan/connect, camera, stream, Wi-Fi, microphone, and LED commands.
 - `src/ota/`: custom update pages driven only by the public `useMentraLiveOta` controller.
+- `src/pairing/`: custom pairing pages driven only by the public `useMentraLivePairing` controller.
 - `src/screens/`: Device, Camera, Stream, System, and Console screens.
 - `src/sdkFormat.ts`: shared status/event formatting.
 - `app.json`: permissions, SDK plugin, and Android native-library packaging rules.
 - `app.config.js`: applies `MENTRA_IOS_BUNDLE_ID` on top of `app.json` so third-party teams can sign device builds.
-- `metro.config.js`: package resolution for published installs and local SDK overrides.
+- `metro.config.js`: watch folders for the in-repo SDK source and single copies of React, React Native and Expo.
 - `modules/mentra-barcode-scanner`: local native module used by this example to scan received photo previews for barcodes.
 - `modules/mentra-video-stream-receiver`: local native module used by this example for Android/iOS direct phone WebRTC preview demos.

@@ -51,6 +51,11 @@ private struct PendingHotspotConnection {
 
 private final class GlassesHotspotConnector {
     func connect(ssid: String, password: String) async throws {
+        // iOS rejoins every saved configuration by itself. Keep only the pair being joined, so a
+        // phone near many pairs never wanders onto another one's hotspot left from an earlier session.
+        for other in await NEHotspotConfigurationManager.shared.configuredSSIDs() where other != ssid {
+            NEHotspotConfigurationManager.shared.removeConfiguration(forSSID: other)
+        }
         let configuration = NEHotspotConfiguration(ssid: ssid, passphrase: password, isWEP: false)
         configuration.joinOnce = false
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -621,17 +626,23 @@ final class BluetoothViewModel: NSObject, ObservableObject, MentraBluetoothSDKDe
         }
     }
 
-    func connect() {
-        scanSession?.stop()
-        scanHint = nil
-        runAction("Connect") {
-            if let device = selectedDiscoveredDevice ?? discoveredDevices.first {
-                try mentraBluetoothSdk.connect(to: device)
-            } else if hasSavedConnectionTarget(bluetoothValues) {
-                try mentraBluetoothSdk.connectDefault()
-            } else {
-                throw ExampleActionError(message: "Scan first to choose nearby glasses.")
+    // Pairing is scan and choose: connecting to the chosen glasses saves them as the SDK's default device.
+    func pair() {
+        runAction("Pair") {
+            guard let device = selectedDiscoveredDevice else {
+                throw ExampleActionError(message: "Choose one of the discovered glasses first.")
             }
+            scanSession?.stop()
+            scanHint = nil
+            discoveredDevices.removeAll()
+            selectedDiscoveredDevice = nil
+            try mentraBluetoothSdk.connect(to: device)
+        }
+    }
+
+    func connect() {
+        runAction("Connect") {
+            try mentraBluetoothSdk.connectDefault()
         }
     }
 
@@ -651,15 +662,6 @@ final class BluetoothViewModel: NSObject, ObservableObject, MentraBluetoothSDKDe
         lastAction = "Selected scan model: \(deviceModelLabel(model))"
     }
 
-    func connect(_ device: Device) {
-        scanSession?.stop()
-        scanHint = nil
-        selectedDiscoveredDevice = device
-        runAction("Connect \(device.name)") {
-            try mentraBluetoothSdk.connect(to: device)
-        }
-    }
-
     func disconnect() {
         let label = "Disconnect"
         guard activeAction != label else { return }
@@ -677,11 +679,13 @@ final class BluetoothViewModel: NSObject, ObservableObject, MentraBluetoothSDKDe
         }
     }
 
-    func clearDefaultDevice() {
-        runAction("Clear default") {
-            mentraBluetoothSdk.clearDefaultDevice()
+    // Unpair also removes the phone's Bluetooth bond on Mentra Live, so the next Pair starts from pairing mode.
+    func unpair() {
+        runAsyncAction("Unpair") { [self] in
+            activeStreamId = nil
+            try await mentraBluetoothSdk.unpair()
+            applyDisconnectedState(status: "Unpaired")
             bluetoothValues = mentraBluetoothSdk.sdkState
-            selectedDiscoveredDevice = nil
         }
     }
 
@@ -3565,25 +3569,12 @@ func deviceLabel(_ status: GlassesRuntimeState?) -> String {
     return "Mentra Live"
 }
 
+// The SDK has no display capability yet, so this follows the Engine hardware profiles.
 func supportsDisplay(_ status: GlassesRuntimeState?) -> Bool {
-    let device = connectedGlassesInfo(status)
-    let model = [
-        device?.deviceModel?.deviceType,
-        device?.bluetoothName,
-    ]
-    .compactMap { $0 }
-    .joined(separator: " ")
-    .lowercased()
-
-    if model.contains("g1") || model.contains("g2") || model.contains("nex") || model.contains("mach")
-        || model.contains("z100") || model.contains("vuzix") || model.contains("display") || model.contains("frame")
-    {
-        return true
+    switch connectedGlassesInfo(status)?.deviceModel {
+    case .ar99, .g1, .g2, .mentraNex, .mach1, .z100, .frame, .nimo, .simulated: return true
+    case .mentraLive, .r1, nil: return false
     }
-    if model.contains("live") || model.contains("r1") || model.contains("ring") {
-        return false
-    }
-    return false
 }
 
 func discoveredDeviceKey(_ device: Device) -> String {
@@ -4032,15 +4023,15 @@ func webrtcPreviewUrl(_ whipUrlText: String) -> URL? {
 }
 
 func localRtmpSetupMessage(_ detail: String) -> String {
-    "Local RTMP/HLS server not reachable (\(detail)). Run python3 examples/local-demo-cloud/server.py and paste the printed RTMP publish URL."
+    "Local RTMP/HLS server not reachable (\(detail)). Run python3 local-demo-cloud/server.py and paste the printed RTMP publish URL."
 }
 
 func localSrtSetupMessage(_ detail: String) -> String {
-    "Local SRT/HLS server not reachable (\(detail)). Run python3 examples/local-demo-cloud/server.py and paste the printed SRT publish URL."
+    "Local SRT/HLS server not reachable (\(detail)). Run python3 local-demo-cloud/server.py and paste the printed SRT publish URL."
 }
 
 func localWebrtcSetupMessage(_ detail: String) -> String {
-    "Local WebRTC server not reachable (\(detail)). Run python3 examples/local-demo-cloud/server.py and paste the printed WHIP publish URL."
+    "Local WebRTC server not reachable (\(detail)). Run python3 local-demo-cloud/server.py and paste the printed WHIP publish URL."
 }
 
 func streamUrlValidationMessage(_ streamUrl: String) -> String? {
