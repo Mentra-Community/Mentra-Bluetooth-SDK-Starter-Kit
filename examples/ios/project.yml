@@ -23,7 +23,7 @@ settings:
 packages:
   MentraBluetoothSDK:
     url: https://github.com/Mentra-Community/mentra-bluetooth-sdk-ios.git
-    exactVersion: 3.4.1-beta.1439
+    exactVersion: 3.4.1-beta.1442
 
 targets:
   MentraExample:
