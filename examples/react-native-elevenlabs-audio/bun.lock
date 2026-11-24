@@ -4,7 +4,7 @@
   "workspaces": {
     "": {
       "dependencies": {
-        "@mentra/bluetooth-sdk": "3.5.0-dev.1508",
+        "@mentra/bluetooth-sdk": "3.5.0-dev.1509",
         "expo": "~55.0.24",
         "expo-build-properties": "~55.0.14",
         "expo-dev-client": "~55.0.34",
@@ -301,9 +301,9 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@mentra/bluetooth-sdk": ["@mentra/bluetooth-sdk@3.5.0-dev.1508", "", { "dependencies": { "@mentra/cloud-protocol": "3.5.0-dev.1508" }, "peerDependencies": { "@expo/config-plugins": ">=8.0.0", "@types/react": ">=18.0.0", "expo": ">=49.0.0", "react": ">=18.0.0", "react-native": ">=0.72.0" } }, "sha512-6V+2JmgcUV232MphhJqNbZc1qOVLJp/Cl9cBCLC7ENWvyJubrnyOnAVERoDQeq9obTyGvbK7mjGOcscNHrIavg=="],
+    "@mentra/bluetooth-sdk": ["@mentra/bluetooth-sdk@3.5.0-dev.1509", "", { "dependencies": { "@mentra/cloud-protocol": "3.5.0-dev.1509" }, "peerDependencies": { "@expo/config-plugins": ">=8.0.0", "@types/react": ">=18.0.0", "expo": ">=49.0.0", "react": ">=18.0.0", "react-native": ">=0.72.0" } }, "sha512-MaxbxJ7qvRMZdEIi4DVZiJcjPGnoa1SpSGgt0imkgTSsk+mj7a7pUJzn8nhRO53GN5mHtz4qZtzL8urojZXSlg=="],
 
-    "@mentra/cloud-protocol": ["@mentra/cloud-protocol@3.5.0-dev.1508", "", { "dependencies": { "tldts": "7.4.19", "zod": "^3.24.1" } }, "sha512-EKVX/D3Gys736pkaO18xoWd+XpjWZQi0jk/8IrG3T3Yi+pNwcnWBhfh1KuXTKgNDYUExsuzHaMdt2nfvTJHiAA=="],
+    "@mentra/cloud-protocol": ["@mentra/cloud-protocol@3.5.0-dev.1509", "", { "dependencies": { "tldts": "7.4.19", "zod": "^3.24.1" } }, "sha512-HDY6j3CewkrKATr1WXlgjtf6UKP4RJ/fM+Br3dg8HQ0bzAwRGecY+SF2oKmNWTzP7IAKHcO+q28upyilGUvXpg=="],
 
     "@nodable/entities": ["@nodable/entities@3.1.0", "", {}, "sha512-LsS/DjHr+uDM647Gru/cA8+J3a3HfhttwCKLyuoyN7yXTFCxKBtSgMQBvrW9yNPa2/zDRUNuGPaH5QUFoa4arQ=="],
 
